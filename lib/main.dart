@@ -1,12 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:inventify/beranda.dart';
-import 'package:inventify/produk.dart';
-import 'package:inventify/profil.dart';
-import 'package:inventify/riwayat.dart';
-import 'package:inventify/transaksi.dart';
+import 'package:inventify/kasir/kasir_beranda.dart';
+
+import 'package:inventify/kasir/produk.dart';
+import 'package:inventify/kasir/profil.dart';
+import 'package:inventify/kasir/riwayat.dart';
+import 'package:inventify/kasir/splash.dart';
+import 'package:inventify/kasir/transaksi.dart';
+import 'package:splash_master/core/splash_master.dart';
 
 void main() {
-  runApp(const MyApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  SplashMaster.initialize();
+  runApp(
+    const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: SplashScreen(),
+      //  home: Login(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -39,7 +50,7 @@ class _BottomNavigationState extends State<BottomNavigation> {
   final List<Widget> _pages = const [
     Beranda(),
     Produk(),
-    Transaksi(),
+    ScanPage(),
     Riwayat(),
     Profil(),
   ];
@@ -52,7 +63,7 @@ class _BottomNavigationState extends State<BottomNavigation> {
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.blue,
         unselectedItemColor: Colors.grey,
-        type: BottomNavigationBarType.fixed,
+        type: BottomNavigationBarType.fixed, 
         onTap: (index) {
           setState(() {
             _selectedIndex = index;
