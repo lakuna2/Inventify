@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:inventify/kasir/kasir_beranda.dart';
-import 'package:inventify/pemilik/owner_beranda.dart';
+import 'package:inventify/main.dart';
+// import 'package:inventify/kasir/kasir_beranda.dart';
+import 'package:inventify/login.dart';
+// import 'package:inventify/pemilik/owner_beranda.dart';
 
 class RoleSelectionPage extends StatelessWidget {
   const RoleSelectionPage({super.key});
@@ -48,7 +50,7 @@ class RoleSelectionPage extends StatelessWidget {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const Beranda(),
+                      builder: (context) => const BottomNavigationKasir(),
                     ),
                   );
                 },
@@ -66,7 +68,7 @@ class RoleSelectionPage extends StatelessWidget {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const OwnerDashboard(),
+                      builder: (context) => const OwnerBottomNavbar(),
                     ),
                   );
                 },
@@ -77,7 +79,12 @@ class RoleSelectionPage extends StatelessWidget {
               // Back to login
               GestureDetector(
                 onTap: () {
-                  Navigator.pop(context);
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const Login(),
+                    ),
+                  );
                 },
                 child: const Text(
                   "‹ Kembali ke login",

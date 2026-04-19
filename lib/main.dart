@@ -1,50 +1,47 @@
 import 'package:flutter/material.dart';
-import 'package:inventify/kasir/kasir_beranda.dart';
+import 'package:splash_master/core/splash_master.dart';
+import 'package:inventify/splash.dart';
 
+// Kasir Pages
+import 'package:inventify/kasir/kasir_beranda.dart';
 import 'package:inventify/kasir/produk.dart';
 import 'package:inventify/kasir/profil.dart';
 import 'package:inventify/kasir/riwayat.dart';
-import 'package:inventify/kasir/splash.dart';
 import 'package:inventify/kasir/transaksi.dart';
-import 'package:splash_master/core/splash_master.dart';
+
+// Owner Pages
+import 'package:inventify/pemilik/owner_beranda.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SplashMaster.initialize();
-  runApp(
-    const MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: SplashScreen(),
-      //  home: Login(),
-    ),
-  );
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Inventify',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
+    return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: BottomNavigation(),
+      home: SplashScreen(),
     );
   }
 }
 
-class BottomNavigation extends StatefulWidget {
-  const BottomNavigation({super.key});
+////////////////////////////////////////////////////////////
+/// NAVBAR KASIR
+////////////////////////////////////////////////////////////
+class BottomNavigationKasir extends StatefulWidget {
+  const BottomNavigationKasir({super.key});
 
   @override
-  State<BottomNavigation> createState() => _BottomNavigationState();
+  State<BottomNavigationKasir> createState() =>
+      _BottomNavigationKasirState();
 }
 
-class _BottomNavigationState extends State<BottomNavigation> {
+class _BottomNavigationKasirState extends State<BottomNavigationKasir> {
   int _selectedIndex = 0;
 
   final List<Widget> _pages = const [
@@ -63,7 +60,7 @@ class _BottomNavigationState extends State<BottomNavigation> {
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.blue,
         unselectedItemColor: Colors.grey,
-        type: BottomNavigationBarType.fixed, 
+        type: BottomNavigationBarType.fixed,
         onTap: (index) {
           setState(() {
             _selectedIndex = index;
@@ -75,7 +72,7 @@ class _BottomNavigationState extends State<BottomNavigation> {
             label: 'Beranda',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.store_mall_directory),
+            icon: Icon(Icons.store),
             label: 'Produk',
           ),
           BottomNavigationBarItem(
@@ -83,12 +80,69 @@ class _BottomNavigationState extends State<BottomNavigation> {
             label: 'Transaksi',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.library_books_outlined),
+            icon: Icon(Icons.history),
             label: 'Riwayat',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person),
             label: 'Profil',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+////////////////////////////////////////////////////////////
+/// NAVBAR OWNER
+////////////////////////////////////////////////////////////
+class OwnerBottomNavbar extends StatefulWidget {
+  const OwnerBottomNavbar({super.key});
+
+  @override
+  State<OwnerBottomNavbar> createState() => _OwnerBottomNavbarState();
+}
+
+class _OwnerBottomNavbarState extends State<OwnerBottomNavbar> {
+  int _selectedIndex = 0;
+
+  final List<Widget> _pages = const [
+    OwnerDashboard(),
+    Center(child: Text("Histori")),
+    Center(child: Text("Laporan")),
+    Center(child: Text("Pengaturan")),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: _pages[_selectedIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        selectedItemColor: Colors.green,
+        unselectedItemColor: Colors.grey,
+        type: BottomNavigationBarType.fixed,
+        onTap: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.dashboard),
+            label: 'Dashboard',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.receipt_long),
+            label: 'Histori',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.bar_chart),
+            label: 'Laporan',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: 'Pengaturan',
           ),
         ],
       ),

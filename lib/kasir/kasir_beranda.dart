@@ -1,27 +1,26 @@
 import 'package:flutter/material.dart';
 
+
 class Beranda extends StatelessWidget {
   const Beranda({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _Header(),
-              const SizedBox(height: 20),
-              _TotalCard(
-                total: 50000,
-                isHidden: false,
-              ),
-              const SizedBox(height: 24),
-              _MenuGrid(),
-            ],
-          ),
+    return SafeArea( // 
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _Header(),
+            const SizedBox(height: 20),
+            _TotalCard(
+              total: 50000,
+              isHidden: false,
+            ),
+            const SizedBox(height: 24),
+            _MenuGrid(),
+          ],
         ),
       ),
     );

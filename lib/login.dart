@@ -14,6 +14,8 @@ class _LoginState extends State<Login> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
+  bool hidePassword = true;
+
   void login() {
     if (_formKey.currentState!.validate()) {
       Navigator.pushReplacement(
@@ -28,79 +30,64 @@ class _LoginState extends State<Login> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0F1C),
+      backgroundColor: const Color(0xFFF4F7FB),
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // HEADER
-            Container(
-              height: 250,
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF1B2B5E), Color(0xFF00BCD4)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(30),
-                  bottomRight: Radius.circular(30),
-                ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Text(
-                    "Inventify",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 10),
-                  Text(
-                    "Inventory & POS Management",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                ],
+            const SizedBox(height: 60),
+
+            // TITLE
+            const Text(
+              "Inventify",
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1B2B5E),
               ),
             ),
 
             const SizedBox(height: 30),
 
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+            // CARD LOGIN
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.all(25),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 10,
+                    offset: Offset(0, 5),
+                  )
+                ],
+              ),
               child: Form(
                 key: _formKey,
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      "Welcome back!",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        "Log In",
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1B2B5E),
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 5),
-                    const Text(
-                      "Login to your account",
-                      style: TextStyle(color: Colors.white60),
-                    ),
+
                     const SizedBox(height: 20),
 
                     // EMAIL
                     _buildTextField(
                       controller: emailController,
-                      hint: "Email Address",
-                      icon: Icons.email,
+                      hint: "Email",
+                      icon: Icons.email_outlined,
                       validator: (value) {
                         if (value!.isEmpty) return "Email tidak boleh kosong";
-                        if (!value.contains('@')) return "Email tidak valid";
                         return null;
                       },
                     ),
@@ -108,19 +95,44 @@ class _LoginState extends State<Login> {
                     const SizedBox(height: 15),
 
                     // PASSWORD
-                    _buildTextField(
+                    TextFormField(
                       controller: passwordController,
-                      hint: "Password",
-                      icon: Icons.lock,
-                      isPassword: true,
+                      obscureText: hidePassword,
                       validator: (value) {
                         if (value!.isEmpty) return "Password tidak boleh kosong";
-                        if (value.length < 4) return "Password terlalu pendek";
                         return null;
                       },
+                      decoration: InputDecoration(
+                        hintText: "Password",
+                        filled: true,
+                        fillColor: const Color(0xFFEEF2F7),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30),
+                          borderSide: BorderSide.none,
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            hidePassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              hidePassword = !hidePassword;
+                            });
+                          },
+                        ),
+                      ),
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 10),
+
+                    const Text(
+                      "Forgot your password?",
+                      style: TextStyle(color: Colors.black54),
+                    ),
+
+                    const SizedBox(height: 25),
 
                     // LOGIN BUTTON
                     Container(
@@ -128,7 +140,7 @@ class _LoginState extends State<Login> {
                       height: 55,
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [Color(0xFF2962FF), Color(0xFF00E5FF)],
+                          colors: [Color(0xFF1B2B5E), Color(0xFF00BCD4)],
                         ),
                         borderRadius: BorderRadius.circular(30),
                       ),
@@ -142,27 +154,77 @@ class _LoginState extends State<Login> {
                           ),
                         ),
                         child: const Text(
-                          "Login",
+                          "Log In",
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
                     ),
 
-                    const SizedBox(height: 15),
+                    const SizedBox(height: 20),
 
-                    const Center(
-                      child: Text(
-                        "Forgot Password",
-                        style: TextStyle(color: Colors.white60),
+                    Row(
+                      children: const [
+                        Expanded(child: Divider()),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 10),
+                          child: Text("or"),
+                        ),
+                        Expanded(child: Divider()),
+                      ],
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // GOOGLE LOGIN
+                    Container(
+                      width: double.infinity,
+                      height: 55,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(color: Colors.black26),
                       ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Image.asset(
+                            'assets/google.png',
+                            height: 24,
+                          ),
+                          const SizedBox(width: 10),
+                          const Text(
+                            "Continue with Google",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          )
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Text("Don’t have an account? "),
+                        Text(
+                          "Sign Up",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1B2B5E),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-            )
+            ),
           ],
         ),
       ),
@@ -174,22 +236,17 @@ class _LoginState extends State<Login> {
     required String hint,
     required IconData icon,
     required String? Function(String?) validator,
-    bool isPassword = false,
   }) {
     return TextFormField(
       controller: controller,
-      obscureText: isPassword,
       validator: validator,
-      style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
-        prefixIcon: Icon(icon, color: Colors.white70),
+        prefixIcon: Icon(icon),
         hintText: hint,
-        hintStyle: const TextStyle(color: Colors.white38),
         filled: true,
-        fillColor: const Color(0xFF1A2238),
-        contentPadding: const EdgeInsets.symmetric(vertical: 18),
+        fillColor: const Color(0xFFEEF2F7),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(30),
           borderSide: BorderSide.none,
         ),
       ),
