@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "68435394225",
+    "project_id": "inventify-61fe1",
+    "storage_bucket": "inventify-61fe1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:68435394225:android:7dd48b0cbdb83064f66c90",
+        "android_client_info": {
+          "package_name": "com.example.inventify"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC0rl302CQKRBD_dfeodoxeAdDiL4W9iL0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

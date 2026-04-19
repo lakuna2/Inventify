@@ -6,8 +6,8 @@ class Beranda extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea( // 
-      child: Padding(
+    return SafeArea(
+      child: SingleChildScrollView( // ✅ TAMBAH INI
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -110,23 +110,23 @@ class _TotalCard extends StatelessWidget {
 class _MenuGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: GridView.builder(
-        itemCount: 6,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          mainAxisSpacing: 16,
-          crossAxisSpacing: 16,
-        ),
-        itemBuilder: (context, index) {
-          return Container(
-            decoration: BoxDecoration(
-              color: Colors.grey.shade300,
-              borderRadius: BorderRadius.circular(12),
-            ),
-          );
-        },
+    return GridView.builder(
+      itemCount: 6,
+      shrinkWrap: true, // ✅ WAJIB
+      physics: const NeverScrollableScrollPhysics(), // ✅ WAJIB
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        mainAxisSpacing: 16,
+        crossAxisSpacing: 16,
       ),
+      itemBuilder: (context, index) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.grey.shade300,
+            borderRadius: BorderRadius.circular(12),
+          ),
+        );
+      },
     );
   }
 }

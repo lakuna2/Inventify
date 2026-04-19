@@ -1,25 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:inventify/theme.dart';
 
-/* =======================
-   KONSTANTA WARNA
-   ======================= */
-class AppColors {
-  static const primary = Color(0xFF1B2B5E);
-  static const secondary = Color(0xFF00BCD4);
-  static const background = Color(0xFFF5F6FA);
-  static const cardBg = Color(0xFFFFFDE7);
-  static const tersedia = Color(0xFF00BCD4);
-  static const stokTipis = Color(0xFFFFA726);
-  static const habis = Color(0xFFEF5350);
-  static const textDark = Color(0xFF1B2B5E);
-  static const textGrey = Color(0xFF90A4AE);
-}
+
 
 /* =======================
    MODEL DATA PRODUK
    ======================= */
 class Product {
-  String id;
+  final String id; // Firestore document ID
   String name;
   String description;
   int stock;
@@ -34,6 +23,31 @@ class Product {
     required this.price,
     required this.category,
   });
+
+  /// Buat Product dari Firestore document snapshot
+  factory Product.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return Product(
+      id: doc.id,
+      name: data['name'] ?? '',
+      description: data['description'] ?? '',
+      stock: (data['stock'] ?? 0).toInt(),
+      price: (data['price'] ?? 0).toDouble(),
+      category: data['category'] ?? 'Lainnya',
+    );
+  }
+
+  /// Konversi ke Map untuk disimpan ke Firestore
+  Map<String, dynamic> toFirestore() {
+    return {
+      'name': name,
+      'description': description,
+      'stock': stock,
+      'price': price,
+      'category': category,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+  }
 
   String get initials {
     final words = name.trim().split(' ');
@@ -77,6 +91,43 @@ class Product {
 }
 
 /* =======================
+   SERVICE FIRESTORE
+   ======================= */
+class ProdukService {
+  // Ganti 'produk' jika kamu ingin nama collection berbeda
+  static const String _collection = 'produk';
+
+  final CollectionReference _ref =
+      FirebaseFirestore.instance.collection(_collection);
+
+  /// Stream realtime semua produk, diurutkan by name
+  Stream<List<Product>> streamProduk() {
+    return _ref.orderBy('name').snapshots().map(
+          (snap) =>
+              snap.docs.map((doc) => Product.fromFirestore(doc)).toList(),
+        );
+  }
+
+  /// Tambah produk baru
+  Future<void> tambahProduk(Product product) async {
+    await _ref.add({
+      ...product.toFirestore(),
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Edit produk yang sudah ada
+  Future<void> editProduk(Product product) async {
+    await _ref.doc(product.id).update(product.toFirestore());
+  }
+
+  /// Hapus produk
+  Future<void> hapusProduk(String id) async {
+    await _ref.doc(id).delete();
+  }
+}
+
+/* =======================
    HALAMAN PRODUK
    ======================= */
 class Produk extends StatefulWidget {
@@ -87,30 +138,20 @@ class Produk extends StatefulWidget {
 }
 
 class _ProdukState extends State<Produk> {
+  final ProdukService _service = ProdukService();
   final TextEditingController _searchController = TextEditingController();
+
   String _query = '';
   String _selectedCategory = 'Semua';
-
-  // Menyimpan id produk yang sedang terbuka swipe-nya
   String? _openSwipeId;
 
   final List<String> _categories = [
-    'Semua', 'Makanan', 'Minuman', 'Snack', 'Lainnya',
+    'Semua',
+    'Makanan',
+    'Minuman',
+    'Snack',
+    'Lainnya',
   ];
-
-  final List<Product> _products = [
-    Product(id: '1', name: 'Indomie Goreng', description: 'Mie goreng instan rasa ayam bawang.', stock: 150, price: 3500, category: 'Makanan'),
-    Product(id: '2', name: 'Aqua 600ml', description: 'Air mineral kemasan botol 600ml.', stock: 80, price: 4000, category: 'Minuman'),
-    Product(id: '3', name: 'Roti Tawar', description: 'Roti tawar segar kemasan 10 lembar.', stock: 5, price: 12000, category: 'Makanan'),
-    Product(id: '4', name: 'Kopi Sachet', description: 'Kopi sachet 3in1, nikmat dan praktis.', stock: 0, price: 2000, category: 'Minuman'),
-    Product(id: '5', name: 'Chitato', description: 'Keripik kentang renyah berbagai rasa.', stock: 30, price: 8500, category: 'Snack'),
-  ];
-
-  List<Product> get _filtered => _products.where((p) {
-        final matchSearch = p.name.toLowerCase().contains(_query.toLowerCase());
-        final matchCategory = _selectedCategory == 'Semua' || p.category == _selectedCategory;
-        return matchSearch && matchCategory;
-      }).toList();
 
   String _formatRupiah(double value) {
     final str = value.toStringAsFixed(0);
@@ -124,18 +165,24 @@ class _ProdukState extends State<Produk> {
     return 'Rp ${buffer.toString().split('').reversed.join()}';
   }
 
-  // Tutup semua swipe yang terbuka
   void _closeAllSwipe() {
-    if (_openSwipeId != null) {
-      setState(() => _openSwipeId = null);
-    }
+    if (_openSwipeId != null) setState(() => _openSwipeId = null);
+  }
+
+  List<Product> _applyFilter(List<Product> products) {
+    return products.where((p) {
+      final matchSearch =
+          p.name.toLowerCase().contains(_query.toLowerCase());
+      final matchCategory =
+          _selectedCategory == 'Semua' || p.category == _selectedCategory;
+      return matchSearch && matchCategory;
+    }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: GestureDetector(
-        // Tap di mana saja di luar card → tutup swipe
         onTap: _closeAllSwipe,
         child: Container(
           color: AppColors.background,
@@ -145,14 +192,62 @@ class _ProdukState extends State<Produk> {
               _buildSearchBar(),
               _buildCategoryFilter(),
               Expanded(
-                child: _filtered.isEmpty
-                    ? _buildEmpty()
-                    : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                        itemCount: _filtered.length,
-                        itemBuilder: (context, index) =>
-                            _buildSwipeCard(_filtered[index]),
-                      ),
+                child: StreamBuilder<List<Product>>(
+                  stream: _service.streamProduk(),
+                  builder: (context, snapshot) {
+                    // Loading state
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.secondary,
+                        ),
+                      );
+                    }
+
+                    // Error state
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.cloud_off_outlined,
+                                size: 56,
+                                color:
+                                    AppColors.textGrey.withValues(alpha: 0.5)),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Gagal memuat data',
+                              style: TextStyle(
+                                  color:
+                                      AppColors.textDark.withValues(alpha: 0.5),
+                                  fontSize: 15),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${snapshot.error}',
+                              style: TextStyle(
+                                  color:
+                                      AppColors.textGrey.withValues(alpha: 0.7),
+                                  fontSize: 12),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    final filtered = _applyFilter(snapshot.data ?? []);
+
+                    if (filtered.isEmpty) return _buildEmpty();
+
+                    return ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                      itemCount: filtered.length,
+                      itemBuilder: (context, index) =>
+                          _buildSwipeCard(filtered[index]),
+                    );
+                  },
+                ),
               ),
             ],
           ),
@@ -189,7 +284,7 @@ class _ProdukState extends State<Produk> {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.primary.withOpacity(0.3),
+                    color: AppColors.primary.withValues(alpha: 0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 3),
                   ),
@@ -215,13 +310,21 @@ class _ProdukState extends State<Produk> {
         style: const TextStyle(color: AppColors.textDark),
         decoration: InputDecoration(
           hintText: 'Cari barang...',
-          hintStyle: TextStyle(color: AppColors.textDark.withOpacity(0.4)),
+          hintStyle:
+              TextStyle(color: AppColors.textDark.withValues(alpha: 0.4)),
           prefixIcon: const Icon(Icons.search, color: AppColors.textGrey),
           filled: true,
           fillColor: Colors.white,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.secondary, width: 1.5)),
+          border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide.none),
+          enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide.none),
+          focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide:
+                  const BorderSide(color: AppColors.secondary, width: 1.5)),
           contentPadding: const EdgeInsets.symmetric(vertical: 14),
         ),
       ),
@@ -254,15 +357,23 @@ class _ProdukState extends State<Produk> {
                 color: isSelected ? AppColors.primary : Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: isSelected
-                    ? [BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 3))]
+                    ? [
+                        BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3))
+                      ]
                     : [],
               ),
               child: Center(
                 child: Text(
                   cat,
                   style: TextStyle(
-                    color: isSelected ? Colors.white : AppColors.textDark.withOpacity(0.6),
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                    color: isSelected
+                        ? Colors.white
+                        : AppColors.textDark.withValues(alpha: 0.6),
+                    fontWeight:
+                        isSelected ? FontWeight.w600 : FontWeight.w400,
                     fontSize: 13,
                   ),
                 ),
@@ -275,18 +386,14 @@ class _ProdukState extends State<Produk> {
   }
 
   /* =======================
-     SWIPE CARD MANUAL
-     Geser kiri → tahan → tombol muncul & bisa diklik
+     SWIPE CARD
      ======================= */
   Widget _buildSwipeCard(Product product) {
     final isOpen = _openSwipeId == product.id;
-    // Lebar tombol aksi (Edit + Hapus + gap)
     const double actionWidth = 148.0;
 
     return GestureDetector(
       onHorizontalDragEnd: (details) {
-        // Geser ke kiri (velocity negatif) → buka
-        // Geser ke kanan (velocity positif) → tutup
         if (details.primaryVelocity != null) {
           if (details.primaryVelocity! < -100) {
             setState(() => _openSwipeId = product.id);
@@ -297,10 +404,8 @@ class _ProdukState extends State<Produk> {
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
-        // Clip agar tombol di belakang tidak keluar area card
         child: Stack(
           children: [
-            // Tombol Edit & Hapus di belakang (kanan)
             Positioned.fill(
               child: Align(
                 alignment: Alignment.centerRight,
@@ -330,8 +435,6 @@ class _ProdukState extends State<Produk> {
                 ),
               ),
             ),
-
-            // Card produk yang bergeser ke kiri
             AnimatedContainer(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOut,
@@ -370,7 +473,10 @@ class _ProdukState extends State<Produk> {
             const SizedBox(height: 4),
             Text(
               label,
-              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -388,7 +494,10 @@ class _ProdukState extends State<Produk> {
         color: AppColors.cardBg,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2)),
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2)),
         ],
       ),
       child: Row(
@@ -396,11 +505,16 @@ class _ProdukState extends State<Produk> {
           Container(
             width: 52,
             height: 52,
-            decoration: BoxDecoration(color: product.avatarColor, borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(
+                color: product.avatarColor,
+                borderRadius: BorderRadius.circular(12)),
             child: Center(
               child: Text(
                 product.initials,
-                style: TextStyle(color: product.avatarTextColor, fontWeight: FontWeight.w700, fontSize: 15),
+                style: TextStyle(
+                    color: product.avatarTextColor,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15),
               ),
             ),
           ),
@@ -409,18 +523,33 @@ class _ProdukState extends State<Produk> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(product.name, style: const TextStyle(color: AppColors.textDark, fontWeight: FontWeight.w700, fontSize: 15)),
+                Text(product.name,
+                    style: const TextStyle(
+                        color: AppColors.textDark,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15)),
                 const SizedBox(height: 3),
-                Text('Stok: ${product.stock} pcs', style: TextStyle(color: AppColors.textDark.withOpacity(0.5), fontSize: 12)),
+                Text('Stok: ${product.stock} pcs',
+                    style: TextStyle(
+                        color: AppColors.textDark.withValues(alpha: 0.5),
+                        fontSize: 12)),
               ],
             ),
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(_formatRupiah(product.price), style: const TextStyle(color: AppColors.textDark, fontWeight: FontWeight.w700, fontSize: 14)),
+              Text(_formatRupiah(product.price),
+                  style: const TextStyle(
+                      color: AppColors.textDark,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14)),
               const SizedBox(height: 4),
-              Text(product.stockStatus, style: TextStyle(color: product.stockColor, fontWeight: FontWeight.w600, fontSize: 12)),
+              Text(product.stockStatus,
+                  style: TextStyle(
+                      color: product.stockColor,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12)),
             ],
           ),
         ],
@@ -436,9 +565,14 @@ class _ProdukState extends State<Produk> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.inventory_2_outlined, size: 64, color: AppColors.textGrey.withOpacity(0.5)),
+          Icon(Icons.inventory_2_outlined,
+              size: 64, color: AppColors.textGrey.withValues(alpha: 0.5)),
           const SizedBox(height: 16),
-          Text('Belum ada barang', style: TextStyle(color: AppColors.textDark.withOpacity(0.4), fontSize: 16, fontWeight: FontWeight.w500)),
+          Text('Belum ada barang',
+              style: TextStyle(
+                  color: AppColors.textDark.withValues(alpha: 0.4),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500)),
         ],
       ),
     );
@@ -450,9 +584,12 @@ class _ProdukState extends State<Produk> {
   void _openForm({Product? product}) {
     final isEdit = product != null;
     final nameCtrl = TextEditingController(text: product?.name ?? '');
-    final descCtrl = TextEditingController(text: product?.description ?? '');
-    final stockCtrl = TextEditingController(text: product?.stock.toString() ?? '');
-    final priceCtrl = TextEditingController(text: product?.price.toStringAsFixed(0) ?? '');
+    final descCtrl =
+        TextEditingController(text: product?.description ?? '');
+    final stockCtrl =
+        TextEditingController(text: product?.stock.toString() ?? '');
+    final priceCtrl = TextEditingController(
+        text: product?.price.toStringAsFixed(0) ?? '');
     String selectedCat = product?.category ?? 'Makanan';
 
     showModalBottomSheet(
@@ -461,12 +598,14 @@ class _ProdukState extends State<Produk> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setModalState) => Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          padding:
+              EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
           child: Container(
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
             decoration: const BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              borderRadius:
+                  BorderRadius.vertical(top: Radius.circular(24)),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -474,42 +613,64 @@ class _ProdukState extends State<Produk> {
               children: [
                 Center(
                   child: Container(
-                    width: 40, height: 4,
-                    decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2)),
                   ),
                 ),
                 const SizedBox(height: 20),
                 Text(
                   isEdit ? 'Edit Barang' : 'Tambah Barang',
-                  style: const TextStyle(color: AppColors.textDark, fontSize: 18, fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                      color: AppColors.textDark,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 20),
-                _formField(nameCtrl, 'Nama Barang', Icons.inventory_2_outlined),
+                _formField(
+                    nameCtrl, 'Nama Barang', Icons.inventory_2_outlined),
                 const SizedBox(height: 12),
-                _formField(descCtrl, 'Deskripsi', Icons.notes_outlined, maxLines: 2),
+                _formField(descCtrl, 'Deskripsi', Icons.notes_outlined,
+                    maxLines: 2),
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Expanded(child: _formField(stockCtrl, 'Stok', Icons.numbers_outlined, numeric: true)),
+                    Expanded(
+                        child: _formField(
+                            stockCtrl, 'Stok', Icons.numbers_outlined,
+                            numeric: true)),
                     const SizedBox(width: 12),
-                    Expanded(child: _formField(priceCtrl, 'Harga (Rp)', Icons.attach_money, numeric: true)),
+                    Expanded(
+                        child: _formField(
+                            priceCtrl, 'Harga (Rp)', Icons.attach_money,
+                            numeric: true)),
                   ],
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: selectedCat,
+                  initialValue: selectedCat,
                   decoration: InputDecoration(
                     labelText: 'Kategori',
-                    prefixIcon: const Icon(Icons.category_outlined, color: AppColors.secondary),
+                    prefixIcon: const Icon(Icons.category_outlined,
+                        color: AppColors.secondary),
                     filled: true,
                     fillColor: AppColors.background,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.secondary)),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none),
+                    focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                            color: AppColors.secondary)),
                   ),
                   items: ['Makanan', 'Minuman', 'Snack', 'Lainnya']
-                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                      .map((c) =>
+                          DropdownMenuItem(value: c, child: Text(c)))
                       .toList(),
-                  onChanged: (v) => setModalState(() => selectedCat = v!),
+                  onChanged: (v) =>
+                      setModalState(() => selectedCat = v!),
                 ),
                 const SizedBox(height: 24),
                 Row(
@@ -518,48 +679,68 @@ class _ProdukState extends State<Produk> {
                       child: OutlinedButton(
                         onPressed: () => Navigator.pop(ctx),
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 14),
                           side: const BorderSide(color: AppColors.primary),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
                         ),
-                        child: const Text('Batal', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+                        child: const Text('Batal',
+                            style: TextStyle(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600)),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () {
+                        onPressed: () async {
                           final name = nameCtrl.text.trim();
                           if (name.isEmpty) return;
-                          setState(() {
+
+                          final updatedProduct = Product(
+                            id: product?.id ?? '',
+                            name: name,
+                            description: descCtrl.text.trim(),
+                            stock: int.tryParse(stockCtrl.text) ?? 0,
+                            price:
+                                double.tryParse(priceCtrl.text) ?? 0,
+                            category: selectedCat,
+                          );
+
+                          try {
                             if (isEdit) {
-                              product
-                                ..name = name
-                                ..description = descCtrl.text.trim()
-                                ..stock = int.tryParse(stockCtrl.text) ?? 0
-                                ..price = double.tryParse(priceCtrl.text) ?? 0
-                                ..category = selectedCat;
+                              await _service.editProduk(updatedProduct);
                             } else {
-                              _products.add(Product(
-                                id: DateTime.now().millisecondsSinceEpoch.toString(),
-                                name: name,
-                                description: descCtrl.text.trim(),
-                                stock: int.tryParse(stockCtrl.text) ?? 0,
-                                price: double.tryParse(priceCtrl.text) ?? 0,
-                                category: selectedCat,
-                              ));
+                              await _service.tambahProduk(updatedProduct);
                             }
-                          });
-                          Navigator.pop(ctx);
+                            if (ctx.mounted) Navigator.pop(ctx);
+                          } catch (e) {
+                            if (ctx.mounted) {
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                SnackBar(
+                                  content:
+                                      Text('Gagal menyimpan: $e'),
+                                  backgroundColor: AppColors.habis,
+                                ),
+                              );
+                            }
+                          }
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
                           elevation: 0,
                         ),
-                        child: Text(isEdit ? 'Simpan' : 'Tambah', style: const TextStyle(fontWeight: FontWeight.w700)),
+                        child: Text(
+                          isEdit ? 'Simpan' : 'Tambah',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w700),
+                        ),
                       ),
                     ),
                   ],
@@ -572,18 +753,29 @@ class _ProdukState extends State<Produk> {
     );
   }
 
-  Widget _formField(TextEditingController ctrl, String label, IconData icon, {int maxLines = 1, bool numeric = false}) {
+  Widget _formField(
+    TextEditingController ctrl,
+    String label,
+    IconData icon, {
+    int maxLines = 1,
+    bool numeric = false,
+  }) {
     return TextField(
       controller: ctrl,
       maxLines: maxLines,
-      keyboardType: numeric ? TextInputType.number : TextInputType.text,
+      keyboardType:
+          numeric ? TextInputType.number : TextInputType.text,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: AppColors.secondary),
         filled: true,
         fillColor: AppColors.background,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.secondary)),
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none),
+        focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.secondary)),
       ),
     );
   }
@@ -595,25 +787,47 @@ class _ProdukState extends State<Produk> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Hapus Barang?', style: TextStyle(color: AppColors.textDark, fontWeight: FontWeight.w700)),
-        content: Text('Apakah kamu yakin ingin menghapus "${product.name}"?', style: TextStyle(color: AppColors.textDark.withOpacity(0.6))),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Hapus Barang?',
+            style: TextStyle(
+                color: AppColors.textDark, fontWeight: FontWeight.w700)),
+        content: Text(
+            'Apakah kamu yakin ingin menghapus "${product.name}"?',
+            style: TextStyle(
+                color: AppColors.textDark.withValues(alpha: 0.6))),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal', style: TextStyle(color: AppColors.textGrey)),
+            child: const Text('Batal',
+                style: TextStyle(color: AppColors.textGrey)),
           ),
           ElevatedButton(
-            onPressed: () {
-              setState(() => _products.removeWhere((p) => p.id == product.id));
-              Navigator.pop(ctx);
+            onPressed: () async {
+              try {
+                await _service.hapusProduk(product.id);
+                if (ctx.mounted) Navigator.pop(ctx);
+              } catch (e) {
+                if (ctx.mounted) {
+                  Navigator.pop(ctx);
+                  // ignore: use_build_context_synchronously
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Gagal menghapus: $e'),
+                      backgroundColor: AppColors.habis,
+                    ),
+                  );
+                }
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.habis,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('Hapus', style: TextStyle(fontWeight: FontWeight.w700)),
+            child: const Text('Hapus',
+                style: TextStyle(fontWeight: FontWeight.w700)),
           ),
         ],
       ),

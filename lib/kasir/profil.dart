@@ -1,4 +1,8 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
+// import 'package:inventify/masuk.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 void main() {
   runApp(const MyApp());
@@ -51,7 +55,7 @@ class Profil extends StatelessWidget {
                 onTap: () {},
               ),
               const Spacer(),
-              _buildLogoutButton(),
+              _buildLogoutButton(context),
             ],
           ),
         ),
@@ -147,22 +151,28 @@ class Profil extends StatelessWidget {
   /* =======================
      LOGOUT
      ======================= */
-  Widget _buildLogoutButton() {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: TextButton.icon(
-        onPressed: () {
-          // nanti: logika logout
-        },
-        icon: const Icon(
-          Icons.logout,
-          color: Colors.red,
+    Widget _buildLogoutButton(BuildContext context) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: TextButton.icon(
+          onPressed: () async {
+            try {
+              await FirebaseAuth.instance.signOut();
+            } catch (e) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Gagal logout: $e')),
+              );
+            }
+          },
+          icon: const Icon(
+            Icons.logout,
+            color: Colors.red,
+          ),
+          label: const Text(
+            'Keluar',
+            style: TextStyle(color: Colors.red),
+          ),
         ),
-        label: const Text(
-          'Keluar',
-          style: TextStyle(color: Colors.red),
-        ),
-      ),
-    );
-  }
+      );
+    }
 }
