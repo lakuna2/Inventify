@@ -2,46 +2,44 @@ import 'package:flutter/material.dart';
 import 'package:inventify/pages/masuk.dart';
 import 'package:inventify/pages/registrasi.dart';
 import 'package:inventify/theme.dart';
+// import 'package:inventify/theme.dart';
+
+enum AuthMode { login, register }
 
 class AuthLink extends StatelessWidget {
-  final bool isLogin;
+  final AuthMode mode;
 
-  const AuthLink({
-    super.key,
-    required this.isLogin,
-    });
+  const AuthLink({super.key, required this.mode});
 
   @override
   Widget build(BuildContext context) {
+    final isLogin = mode == AuthMode.login;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
-          isLogin ? 'Sudah Punya Akun? ' : 'Belum Punya Akun? ',
+          isLogin
+              ? 'Belum Punya Akun? '
+              : 'Sudah Punya Akun? ',
           style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
         ),
         GestureDetector(
           onTap: () {
-            if(isLogin){
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const MasukPage()),
-              );
-            } else {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const RegisterPage()),
-              );
-            }
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    isLogin ? const RegisterPage() : const MasukPage(),
+              ),
+            );
           },
           child: Text(
-            isLogin ? 'Masuk' : 'Daftar',
+            isLogin ? 'Daftar' : 'Masuk',
             style: TextStyle(
               color: AppColors.accent,
-              fontSize: 14,
               fontWeight: FontWeight.w700,
               decoration: TextDecoration.underline,
-              decorationColor: AppColors.accent,
             ),
           ),
         ),
@@ -49,33 +47,3 @@ class AuthLink extends StatelessWidget {
     );
   }
 }
-
-// Widget _buildLoginLink() {
-//   return Row(
-//     mainAxisAlignment: MainAxisAlignment.center,
-//     children: [
-//       const Text(
-//         'Sudah Punya Akun? ',
-//         style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
-//       ),
-//       GestureDetector(
-//         onTap: () {
-//           Navigator.pushReplacement(
-//             context,
-//             MaterialPageRoute(builder: (context) => const MasukPage()),
-//           );
-//         },
-//         child: const Text(
-//           'Masuk',
-//           style: TextStyle(
-//             color: AppColors.accent,
-//             fontSize: 14,
-//             fontWeight: FontWeight.w700,
-//             decoration: TextDecoration.underline,
-//             decorationColor: AppColors.accent,
-//           ),
-//         ),
-//       ),
-//     ],
-//   );
-// }

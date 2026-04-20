@@ -51,7 +51,7 @@ class Auth {
 
       // 5. Navigasi berdasarkan role
       switch (role) {
-        case 'owner':
+        case 'pemilik':
           // Navigasi ke dashboard owner
           break;
         case 'kasir':

@@ -1,168 +1,195 @@
 import 'package:flutter/material.dart';
-
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: Riwayat(),
-    );
-  }
-}
+import 'package:inventify/models/transaksi_model.dart';
+import 'package:inventify/services/transaksi_service.dart';
+import 'package:inventify/widgets/transaksi_card.dart';
+import 'package:inventify/widgets/transaksi_detail_sheet.dart';
+import 'package:inventify/theme.dart';
 
 class Riwayat extends StatefulWidget {
   const Riwayat({super.key});
-
   @override
   State<Riwayat> createState() => _RiwayatState();
 }
 
 class _RiwayatState extends State<Riwayat> {
-  final List<double> salesData = [20, 40, 30, 80, 45, 50, 60];
+  final _svc = TransactionService();
+  String _query = '';
+  DateTime? _filterDate;
 
-  final List<Map<String, dynamic>> history = [
-    {'name': 'Beras 5kg', 'qty': 2, 'total': 50000},
-    {'name': 'Minyak Goreng', 'qty': 1, 'total': 18000},
-    {'name': 'Gula Pasir', 'qty': 3, 'total': 36000},
-  ];
+  List<TransactionModel> _filter(List<TransactionModel> list) {
+    return list.where((tx) {
+      final matchQuery = _query.isEmpty ||
+          tx.id.toLowerCase().contains(_query.toLowerCase()) ||
+          tx.kasir.toLowerCase().contains(_query.toLowerCase());
+      final matchDate = _filterDate == null ||
+          (tx.createdAt.year == _filterDate!.year &&
+           tx.createdAt.month == _filterDate!.month &&
+           tx.createdAt.day == _filterDate!.day);
+      return matchQuery && matchDate;
+    }).toList();
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _filterDate ?? DateTime.now(),
+      firstDate: DateTime(2024),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) setState(() => _filterDate = picked);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF4F4F4),
-      appBar: AppBar(
-        title: const Text('Histori'),
-        centerTitle: true,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            _buildChart(),
-            const SizedBox(height: 16),
-            _buildStockInfo(),
-            const SizedBox(height: 16),
-            Expanded(child: _buildHistoryList()),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /* =========================
-     GRAFIK PENJUALAN
-     ========================= */
-  Widget _buildChart() {
-    return Container(
-      height: 160,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade300,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: CustomPaint(
-        painter: LineChartPainter(salesData),
-        child: Container(),
-      ),
-    );
-  }
-
-  /* =========================
-     INFO STOK
-     ========================= */
-  Widget _buildStockInfo() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade300,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: const Text(
-        'Stok tersedia: 124 item',
-        style: TextStyle(fontWeight: FontWeight.bold),
-      ),
-    );
-  }
-
-  /* =========================
-     LIST RIWAYAT
-     ========================= */
-  Widget _buildHistoryList() {
-    return ListView.builder(
-      itemCount: history.length,
-      itemBuilder: (context, index) {
-        final item = history[index];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.grey.shade300,
-            borderRadius: BorderRadius.circular(12),
+    return SafeArea(
+      child: Container(
+        color: AppColors.background,
+        child: Column(children: [
+          _Header(
+            filterDate: _filterDate,
+            onPickDate: _pickDate,
+            onClearDate: () => setState(() => _filterDate = null),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item['name'],
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  Text('Qty: ${item['qty']}'),
-                ],
-              ),
-              Text(
-                'Rp ${item['total']}',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ],
+          _SearchBar(onChanged: (v) => setState(() => _query = v)),
+          Expanded(
+            child: StreamBuilder<List<TransactionModel>>(
+              stream: _svc.stream(),
+              builder: (context, snap) {
+                if (snap.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator(color: AppColors.secondary));
+                }
+                if (snap.hasError) {
+                  return _ErrorState(error: snap.error);
+                }
+                final list = _filter(snap.data ?? []);
+                if (list.isEmpty) return const _EmptyState();
+                return _TransactionList(list: list);
+              },
+            ),
           ),
-        );
-      },
+        ]),
+      ),
     );
   }
 }
 
-/* =========================
-   CUSTOM PAINTER GRAFIK
-   ========================= */
-class LineChartPainter extends CustomPainter {
-  final List<double> data;
+// ── Sub-widgets ────────────────────────────────────────────────────────────
 
-  LineChartPainter(this.data);
+class _Header extends StatelessWidget {
+  final DateTime? filterDate;
+  final VoidCallback onPickDate, onClearDate;
+  const _Header({required this.filterDate, required this.onPickDate, required this.onClearDate});
+
+  String _fmt(DateTime d) => '${d.day}/${d.month}/${d.year}';
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.black
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
-
-    final path = Path();
-    final maxValue = data.reduce((a, b) => a > b ? a : b);
-
-    for (int i = 0; i < data.length; i++) {
-      final x = size.width * (i / (data.length - 1));
-      final y = size.height - (data[i] / maxValue * size.height);
-
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
-    }
-
-    canvas.drawPath(path, paint);
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Row(children: [
+        const Expanded(
+          child: Text('Riwayat', style: TextStyle(
+            color: AppColors.textDark, fontWeight: FontWeight.w700, fontSize: 20)),
+        ),
+        // Filter tanggal
+        GestureDetector(
+          onTap: onPickDate,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: filterDate != null ? AppColors.secondary : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: filterDate != null
+                  ? AppColors.secondary
+                  : AppColors.textGrey.withValues(alpha: 0.3)),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.calendar_today_outlined,
+                size: 14,
+                color: filterDate != null ? Colors.white : AppColors.textGrey),
+              const SizedBox(width: 6),
+              Text(filterDate != null ? _fmt(filterDate!) : 'Filter',
+                style: TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w600,
+                  color: filterDate != null ? Colors.white : AppColors.textGrey)),
+              if (filterDate != null) ...[
+                const SizedBox(width: 6),
+                GestureDetector(
+                  onTap: onClearDate,
+                  child: const Icon(Icons.close, size: 14, color: Colors.white),
+                ),
+              ],
+            ]),
+          ),
+        ),
+      ]),
+    );
   }
+}
+
+class _SearchBar extends StatelessWidget {
+  final void Function(String) onChanged;
+  const _SearchBar({required this.onChanged});
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: TextField(
+        onChanged: onChanged,
+        decoration: InputDecoration(
+          hintText: 'Cari ID transaksi atau kasir...',
+          hintStyle: TextStyle(color: AppColors.textDark.withValues(alpha: 0.4), fontSize: 13),
+          prefixIcon: const Icon(Icons.search, color: AppColors.textGrey),
+          filled: true, fillColor: Colors.white,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: AppColors.secondary, width: 1.5)),
+          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+        ),
+      ),
+    );
+  }
+}
+
+class _TransactionList extends StatelessWidget {
+  final List<TransactionModel> list;
+  const _TransactionList({required this.list});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+      itemCount: list.length,
+      itemBuilder: (_, i) => TransactionCard(
+        tx: list[i],
+        onTap: () => TransactionDetailSheet.show(context, list[i]),
+      ),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState();
+  @override
+  Widget build(BuildContext context) {
+    return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      Icon(Icons.receipt_long_outlined, size: 56, color: AppColors.textGrey.withValues(alpha: 0.4)),
+      const SizedBox(height: 12),
+      Text('Belum ada riwayat', style: TextStyle(
+        fontSize: 15, color: AppColors.textDark.withValues(alpha: 0.4))),
+    ]));
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  final Object? error;
+  const _ErrorState({this.error});
+  @override
+  Widget build(BuildContext context) {
+    return Center(child: Text('Gagal memuat\n$error',
+      textAlign: TextAlign.center,
+      style: TextStyle(color: AppColors.textDark.withValues(alpha: 0.5))));
+  }
 }

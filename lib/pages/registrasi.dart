@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:inventify/controllers/auth.dart';
 
-import 'package:inventify/pages/masuk.dart';
+// import 'package:inventify/pages/masuk.dart';
 import 'package:inventify/theme.dart';
 import 'package:inventify/widgets/auth_link.dart';
 
@@ -104,7 +104,7 @@ void _handleRegister() async {
                 const SizedBox(height: 24),
 
                 // ── Link Masuk ──
-                AuthLink(isLogin: false),
+                AuthLink(mode: AuthMode.register),
 
                 const SizedBox(height: 16),
               ],

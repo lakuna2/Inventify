@@ -17,7 +17,11 @@ import 'package:inventify/kasir/riwayat.dart';
 import 'package:inventify/kasir/transaksi.dart';
 
 // Owner
-import 'package:inventify/pemilik/owner_beranda.dart';
+import 'package:inventify/owner/owner_beranda.dart';
+// ignore: unused_import
+import 'package:inventify/owner/owner_histori.dart';
+import 'package:inventify/owner/owner_laporan.dart';
+import 'package:inventify/owner/owner_pengaturan.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -204,7 +208,7 @@ class _BottomNavigationKasirState extends State<BottomNavigationKasir> {
   final List<Widget> _pages = const [
     Beranda(),
     Produk(),
-    ScanPage(),
+    Transaksi(),
     Riwayat(),
     Profil(),
   ];
@@ -248,9 +252,9 @@ class _OwnerBottomNavbarState extends State<OwnerBottomNavbar> {
 
   final List<Widget> _pages = const [
     OwnerDashboard(),
-    Center(child: Text('Histori')),
-    Center(child: Text('Laporan')),
-    Center(child: Text('Pengaturan')),
+    OwnerHistori(),
+    OwnerLaporan(),
+    OwnerPengaturan(),
   ];
 
   @override

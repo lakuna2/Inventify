@@ -5,7 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:inventify/controllers/auth.dart';
 import 'package:inventify/kasir/kasir_beranda.dart';
-import 'package:inventify/pemilik/owner_beranda.dart';
+import 'package:inventify/owner/owner_beranda.dart';
 import 'package:inventify/theme.dart';
 import 'package:inventify/widgets/auth_link.dart';
 
@@ -53,7 +53,7 @@ class _MasukPageState extends State<MasukPage> {
           String role = (userDoc['role'] ?? '').toString().toLowerCase();
 
           // Navigasi berdasarkan role
-          if (role == 'owner') {
+          if (role == 'pemilik') {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(builder: (context) => const OwnerDashboard()),
@@ -149,7 +149,7 @@ class _MasukPageState extends State<MasukPage> {
                 const SizedBox(height: 24),
 
                 // ── Link Registrasi ──
-                AuthLink(isLogin: true),
+                AuthLink(mode: AuthMode.login),
 
                 const SizedBox(height: 16),
               ],
