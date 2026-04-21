@@ -35,8 +35,26 @@ class _OwnerPengaturanState extends State<OwnerPengaturan> {
   }
 
   Future<void> _logout() async {
-    final ok = await confirmDelete(context,
-      judul: 'Keluar', isi: 'Yakin ingin keluar dari akun ini?', dangerous: true);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Keluar', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+        content: const Text('Yakin ingin keluar dari akun ini?', style: TextStyle(fontSize: 13)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary, foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              elevation: 0),
+            child: const Text('Keluar', style: TextStyle(fontWeight: FontWeight.w700))),
+        ],
+      ),
+    ) ?? false;
     if (ok) await FirebaseAuth.instance.signOut();
   }
 
@@ -49,15 +67,11 @@ class _OwnerPengaturanState extends State<OwnerPengaturan> {
     try {
       final txList = await _svc.getTransaksi();
       await _svc.hapusSemua(txList.map((tx) => tx['id'] as String).toList());
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Semua riwayat dihapus'), backgroundColor: Color(0xFF1D9E75)));
-      }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Gagal: $e'), backgroundColor: AppColors.habis));
-      }
     }
   }
 
