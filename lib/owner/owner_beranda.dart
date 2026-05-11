@@ -7,7 +7,9 @@ import 'package:inventify/widgets/owner/owner_helpers.dart';
 import 'package:inventify/theme.dart';
 
 class OwnerDashboard extends StatefulWidget {
-  const OwnerDashboard({super.key});
+  final void Function(int index)? onNavigate;
+
+  const OwnerDashboard({super.key, this.onNavigate});
 
   @override
   State<OwnerDashboard> createState() => _OwnerDashboardState();
@@ -19,6 +21,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
   Map<String, dynamic> _ringkasan = {};
   List<Map<String, dynamic>> _recentTx = [];
   List<Map<String, dynamic>> _stokTipis = [];
+  List<Map<String, dynamic>> _allStok = [];
   bool _loading = true;
 
   @override
@@ -34,15 +37,18 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
         _svc.getRingkasanHarian(),
         _svc.getTransaksi(),
         _svc.getStokTipis(),
+        _svc.getAllProdukStok(),
       ]);
       if (!mounted) return;
       setState(() {
         _ringkasan = res[0] as Map<String, dynamic>;
         _recentTx = (res[1] as List<Map<String, dynamic>>).take(5).toList();
         _stokTipis = res[2] as List<Map<String, dynamic>>;
+        _allStok = res[3] as List<Map<String, dynamic>>;
         _loading = false;
       });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('=== _load ERROR: $e');
       if (mounted) setState(() => _loading = false);
     }
   }
@@ -54,34 +60,53 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
       body: RefreshIndicator(
         onRefresh: _load,
         color: AppColors.primary,
-        child: CustomScrollView(slivers: [
-          _appBar(),
-          _loading
-            ? const SliverFillRemaining(child: Center(child: CircularProgressIndicator(color: AppColors.primary)))
-            : SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                sliver: SliverList(delegate: SliverChildListDelegate([
-                  _summaryGrid(),
-                  const SizedBox(height: 16),
-                  if (_stokTipis.isNotEmpty) ...[
-                    LowStockBanner(items: _stokTipis),
-                    const SizedBox(height: 16),
-                  ],
-                  _recentHeader(),
-                  const SizedBox(height: 10),
-                  if (_recentTx.isEmpty)
-                    _empty('Belum ada transaksi hari ini')
-                  else
-                    ..._recentTx.map((tx) => RecentTxTile(
-                      txId: tx['id'],
-                      waktu: (tx['createdAt'] as dynamic)?.toDate() ?? DateTime.now(),
-                      total: (tx['total'] as num).toDouble(),
-                      jumlahItem: (tx['items'] as List?)?.length ?? 0,
-                      kasir: tx['kasir'] ?? '-',
-                    )),
-                ])),
-              ),
-        ]),
+        child: CustomScrollView(
+          slivers: [
+            _appBar(),
+            _loading
+                ? const SliverFillRemaining(
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  )
+                : SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate([
+                        _summaryGrid(),
+                        const SizedBox(height: 16),
+                        if (_stokTipis.isNotEmpty) ...[
+                          LowStockBanner(
+                            items: _stokTipis,
+                            allStokData: _allStok,
+                            onRefresh: _load,
+                            onNavigate: widget.onNavigate,
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                        _recentHeader(),
+                        const SizedBox(height: 10),
+                        if (_recentTx.isEmpty)
+                          _empty('Belum ada transaksi hari ini')
+                        else
+                          ..._recentTx.map(
+                            (tx) => RecentTxTile(
+                              txId: tx['id'],
+                              waktu:
+                                  (tx['createdAt'] as dynamic)?.toDate() ??
+                                  DateTime.now(),
+                              total: (tx['total'] as num).toDouble(),
+                              jumlahItem: (tx['items'] as List?)?.length ?? 0,
+                              kasir: tx['kasir'] ?? '-',
+                            ),
+                          ),
+                      ]),
+                    ),
+                  ),
+          ],
+        ),
       ),
     );
   }
@@ -97,30 +122,55 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               colors: [AppColors.primary, Color(0xFF534AB7)],
-              begin: Alignment.topLeft, end: Alignment.bottomRight,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
           ),
-          child: SafeArea(child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: Row(children: [
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(_greeting(), style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.8))),
-                const Text('Dashboard Pemilik',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
-              ]),
-              const Spacer(),
-              GestureDetector(
-                onTap: _load,
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(10)),
-                  child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 18),
-                ),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Row(
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _greeting(),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withValues(alpha: 0.8),
+                        ),
+                      ),
+                      const Text(
+                        'Dashboard Pemilik',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: _load,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.refresh_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ]),
-          )),
+            ),
+          ),
         ),
       ),
     );
@@ -128,41 +178,70 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
 
   Widget _summaryGrid() {
     return GridView.count(
-      crossAxisCount: 2, crossAxisSpacing: 10, mainAxisSpacing: 10,
-      childAspectRatio: 1.5, shrinkWrap: true,
+      crossAxisCount: 2,
+      crossAxisSpacing: 10,
+      mainAxisSpacing: 10,
+      childAspectRatio: 1.5,
+      shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       children: [
         SummaryCard(
           label: 'Pendapatan Hari Ini',
-          value: rupiahFormat((_ringkasan['pendapatan'] as num?)?.toDouble() ?? 0),
-          icon: Icons.trending_up_rounded, color: AppColors.primary, badge: 'Hari ini'),
+          value: rupiahFormat(
+            (_ringkasan['pendapatan'] as num?)?.toDouble() ?? 0,
+          ),
+          icon: Icons.trending_up_rounded,
+          color: AppColors.primary,
+          badge: 'Hari ini',
+        ),
         SummaryCard(
           label: 'Total Transaksi',
           value: '${_ringkasan['transaksi'] ?? 0}',
-          icon: Icons.receipt_long_rounded, color: AppColors.secondary, badge: 'Hari ini'),
+          icon: Icons.receipt_long_rounded,
+          color: AppColors.secondary,
+          badge: 'Hari ini',
+        ),
         SummaryCard(
           label: 'Item Terjual',
           value: '${_ringkasan['itemTerjual'] ?? 0}',
-          icon: Icons.inventory_2_outlined, color: const Color(0xFF1D9E75)),
+          icon: Icons.inventory_2_outlined,
+          color: const Color(0xFF1D9E75),
+        ),
         SummaryCard(
           label: 'Stok Tipis',
           value: '${_stokTipis.length}',
-          icon: Icons.warning_amber_rounded, color: AppColors.habis),
+          icon: Icons.warning_amber_rounded,
+          color: AppColors.habis,
+        ),
       ],
     );
   }
 
   Widget _recentHeader() {
-    return const Row(children: [
-      Text('Transaksi Terbaru',
-        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textDark)),
-    ]);
+    return const Row(
+      children: [
+        Text(
+          'Transaksi Terbaru',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textDark,
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _empty(String msg) => Container(
     padding: const EdgeInsets.symmetric(vertical: 28),
     alignment: Alignment.center,
-    child: Text(msg, style: TextStyle(fontSize: 13, color: AppColors.textGrey.withValues(alpha: 0.5))),
+    child: Text(
+      msg,
+      style: TextStyle(
+        fontSize: 13,
+        color: AppColors.textGrey.withValues(alpha: 0.5),
+      ),
+    ),
   );
 
   String _greeting() {

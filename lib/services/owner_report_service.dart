@@ -18,9 +18,10 @@ class OwnerReportService {
     double pendapatan = 0;
     int itemTerjual = 0;
     for (final doc in snap.docs) {
-      pendapatan += (doc['total'] as num).toDouble();
-      for (final item in (doc['items'] as List? ?? [])) {
-        itemTerjual += (item['qty'] as num).toInt();
+      final d = doc.data();
+      pendapatan += (d['total'] as num? ?? 0).toDouble();
+      for (final item in (d['items'] as List? ?? [])) {
+        itemTerjual += (item['qty'] as num? ?? 0).toInt();
       }
     }
     return {
@@ -47,19 +48,21 @@ class OwnerReportService {
     final Map<String, double> produkMap = {};
 
     for (final doc in snap.docs) {
-      pendapatan += (doc['total'] as num).toDouble();
-      for (final item in (doc['items'] as List? ?? [])) {
-        itemTerjual += (item['qty'] as num).toInt();
-        final nama = item['nama'] ?? item['name'] ?? 'Unknown';
-        produkMap[nama] = (produkMap[nama] ?? 0) + (item['subtotal'] as num).toDouble();
+      final d = doc.data();
+      pendapatan += (d['total'] as num? ?? 0).toDouble();
+      for (final item in (d['items'] as List? ?? [])) {
+        itemTerjual += (item['qty'] as num? ?? 0).toInt();
+        final nama = item['name'] ?? 'Unknown';
+        produkMap[nama] =
+            (produkMap[nama] ?? 0) + (item['subtotal'] as num? ?? 0).toDouble();
       }
     }
 
-    final topProduk = (produkMap.entries.toList()
-          ..sort((a, b) => b.value.compareTo(a.value)))
-        .take(5)
-        .map((e) => {'nama': e.key, 'total': e.value})
-        .toList();
+    final topProduk =
+        (produkMap.entries.toList()..sort((a, b) => b.value.compareTo(a.value)))
+            .take(5)
+            .map((e) => {'name': e.key, 'total': e.value})
+            .toList();
 
     return {
       'pendapatan': pendapatan,
@@ -83,11 +86,19 @@ class OwnerReportService {
           .get();
       double total = 0;
       for (final doc in snap.docs) {
-        total += (doc['total'] as num).toDouble();
+        total += (doc.data()['total'] as num? ?? 0).toDouble();
       }
       result.add({
         'tanggal': hari,
-        'label': ['Min','Sen','Sel','Rab','Kam','Jum','Sab'][hari.weekday % 7],
+        'label': [
+          'Min',
+          'Sen',
+          'Sel',
+          'Rab',
+          'Kam',
+          'Jum',
+          'Sab',
+        ][hari.weekday % 7],
         'total': total,
         'jumlah': snap.docs.length,
       });
@@ -99,14 +110,21 @@ class OwnerReportService {
   Future<List<Map<String, dynamic>>> getStokTipis({int batas = 5}) async {
     final snap = await _db
         .collection('produk')
-        .where('stok', isLessThanOrEqualTo: batas)
-        .orderBy('stok')
+        .where('stock', isLessThanOrEqualTo: batas)
         .get();
-    return snap.docs.map((doc) => {
-      'id': doc.id,
-      'nama': doc['nama'] ?? '',
-      'stok': (doc['stok'] as num).toInt(),
-    }).toList();
+
+    final list = snap.docs
+        .map(
+          (doc) => {
+            'id': doc.id,
+            'nama': doc['name'] ?? '',
+            'stok': (doc['stock'] as num? ?? 0).toInt(),
+          },
+        )
+        .toList();
+
+    list.sort((a, b) => (a['stok'] as int).compareTo(b['stok'] as int));
+    return list;
   }
 
   // ── Semua transaksi + filter ──────────────────────
@@ -115,13 +133,38 @@ class OwnerReportService {
     DateTime? sampai,
     String? kasir,
   }) async {
-    Query q = _db.collection('transaksi').orderBy('createdAt', descending: true);
-    if (dari != null) q = q.where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(dari));
-    if (sampai != null) q = q.where('createdAt', isLessThan: Timestamp.fromDate(sampai.add(const Duration(days: 1))));
-    if (kasir != null && kasir.isNotEmpty) q = q.where('kasir', isEqualTo: kasir);
+    Query q = _db
+        .collection('transaksi')
+        .orderBy('createdAt', descending: true);
+    if (dari != null) {
+      q = q.where(
+        'createdAt',
+        isGreaterThanOrEqualTo: Timestamp.fromDate(dari),
+      );
+    }
+    if (sampai != null) {
+      q = q.where(
+        'createdAt',
+        isLessThan: Timestamp.fromDate(sampai.add(const Duration(days: 1))),
+      );
+    }
+    if (kasir != null && kasir.isNotEmpty) {
+      q = q.where('kasir', isEqualTo: kasir);
+    }
 
     final snap = await q.get();
-    return snap.docs.map((doc) => {'id': doc.id, ...(doc.data() as Map<String, dynamic>)}).toList();
+    return snap.docs.map((doc) {
+      final d = doc.data() as Map<String, dynamic>;
+      return {
+        'id': doc.id,
+        'total': (d['total'] as num? ?? 0).toDouble(),
+        'totalLaba': (d['totalLaba'] as num? ?? 0).toDouble(),
+        'kasir': d['kasir'] ?? '-',
+        'createdAt': d['createdAt'],
+        'items': d['items'] ?? [],
+        'bayar': (d['bayar'] as num? ?? 0).toDouble(),
+      };
+    }).toList();
   }
 
   // ── Hapus transaksi ───────────────────────────────
@@ -134,5 +177,21 @@ class OwnerReportService {
       batch.delete(_db.collection('transaksi').doc(id));
     }
     await batch.commit();
+  }
+
+  Future<List<Map<String, dynamic>>> getAllProdukStok() async {
+    final snap = await _db.collection('produk').get();
+
+    final list = snap.docs
+        .map((doc) => {
+              'id': doc.id,
+              'nama': doc['name'] ?? '',
+              'stok': (doc['stock'] as num? ?? 0).toInt(),
+            })
+        .toList();
+
+    // Urutkan: stok paling sedikit di atas
+    list.sort((a, b) => (a['stok'] as int).compareTo(b['stok'] as int));
+    return list;
   }
 }

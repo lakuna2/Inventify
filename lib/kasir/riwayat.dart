@@ -18,13 +18,15 @@ class _RiwayatState extends State<Riwayat> {
 
   List<TransactionModel> _filter(List<TransactionModel> list) {
     return list.where((tx) {
-      final matchQuery = _query.isEmpty ||
+      final matchQuery =
+          _query.isEmpty ||
           tx.id.toLowerCase().contains(_query.toLowerCase()) ||
           tx.kasir.toLowerCase().contains(_query.toLowerCase());
-      final matchDate = _filterDate == null ||
+      final matchDate =
+          _filterDate == null ||
           (tx.createdAt.year == _filterDate!.year &&
-           tx.createdAt.month == _filterDate!.month &&
-           tx.createdAt.day == _filterDate!.day);
+              tx.createdAt.month == _filterDate!.month &&
+              tx.createdAt.day == _filterDate!.day);
       return matchQuery && matchDate;
     }).toList();
   }
@@ -41,33 +43,37 @@ class _RiwayatState extends State<Riwayat> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Container(
-        color: AppColors.background,
-        child: Column(children: [
-          _Header(
-            filterDate: _filterDate,
-            onPickDate: _pickDate,
-            onClearDate: () => setState(() => _filterDate = null),
-          ),
-          _SearchBar(onChanged: (v) => setState(() => _query = v)),
-          Expanded(
-            child: StreamBuilder<List<TransactionModel>>(
-              stream: _svc.stream(),
-              builder: (context, snap) {
-                if (snap.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(color: AppColors.secondary));
-                }
-                if (snap.hasError) {
-                  return _ErrorState(error: snap.error);
-                }
-                final list = _filter(snap.data ?? []);
-                if (list.isEmpty) return const _EmptyState();
-                return _TransactionList(list: list);
-              },
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _Header(
+              filterDate: _filterDate,
+              onPickDate: _pickDate,
+              onClearDate: () => setState(() => _filterDate = null),
             ),
-          ),
-        ]),
+            _SearchBar(onChanged: (v) => setState(() => _query = v)),
+            Expanded(
+              child: StreamBuilder<List<TransactionModel>>(
+                stream: _svc.stream(),
+                builder: (context, snap) {
+                  if (snap.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.secondary,
+                      ),
+                    );
+                  }
+                  if (snap.hasError) return _ErrorState(error: snap.error);
+                  final list = _filter(snap.data ?? []);
+                  if (list.isEmpty) return const _EmptyState();
+                  return _TransactionList(list: list);
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -78,7 +84,11 @@ class _RiwayatState extends State<Riwayat> {
 class _Header extends StatelessWidget {
   final DateTime? filterDate;
   final VoidCallback onPickDate, onClearDate;
-  const _Header({required this.filterDate, required this.onPickDate, required this.onClearDate});
+  const _Header({
+    required this.filterDate,
+    required this.onPickDate,
+    required this.onClearDate,
+  });
 
   String _fmt(DateTime d) => '${d.day}/${d.month}/${d.year}';
 
@@ -86,43 +96,70 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Row(children: [
-        const Expanded(
-          child: Text('Riwayat', style: TextStyle(
-            color: AppColors.textDark, fontWeight: FontWeight.w700, fontSize: 20)),
-        ),
-        // Filter tanggal
-        GestureDetector(
-          onTap: onPickDate,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: filterDate != null ? AppColors.secondary : Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: filterDate != null
-                  ? AppColors.secondary
-                  : AppColors.textGrey.withValues(alpha: 0.3)),
+      child: Row(
+        children: [
+          const Expanded(
+            child: Text(
+              'Riwayat',
+              style: TextStyle(
+                color: AppColors.textDark,
+                fontWeight: FontWeight.w700,
+                fontSize: 20,
+              ),
             ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.calendar_today_outlined,
-                size: 14,
-                color: filterDate != null ? Colors.white : AppColors.textGrey),
-              const SizedBox(width: 6),
-              Text(filterDate != null ? _fmt(filterDate!) : 'Filter',
-                style: TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.w600,
-                  color: filterDate != null ? Colors.white : AppColors.textGrey)),
-              if (filterDate != null) ...[
-                const SizedBox(width: 6),
-                GestureDetector(
-                  onTap: onClearDate,
-                  child: const Icon(Icons.close, size: 14, color: Colors.white),
-                ),
-              ],
-            ]),
           ),
-        ),
-      ]),
+          // Filter tanggal
+          GestureDetector(
+            onTap: onPickDate,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: filterDate != null ? AppColors.secondary : Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: filterDate != null
+                      ? AppColors.secondary
+                      : AppColors.textGrey.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.calendar_today_outlined,
+                    size: 14,
+                    color: filterDate != null
+                        ? Colors.white
+                        : AppColors.textGrey,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    filterDate != null ? _fmt(filterDate!) : 'Filter',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: filterDate != null
+                          ? Colors.white
+                          : AppColors.textGrey,
+                    ),
+                  ),
+                  if (filterDate != null) ...[
+                    const SizedBox(width: 6),
+                    GestureDetector(
+                      onTap: onClearDate,
+                      child: const Icon(
+                        Icons.close,
+                        size: 14,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -139,13 +176,28 @@ class _SearchBar extends StatelessWidget {
         onChanged: onChanged,
         decoration: InputDecoration(
           hintText: 'Cari ID transaksi atau kasir...',
-          hintStyle: TextStyle(color: AppColors.textDark.withValues(alpha: 0.4), fontSize: 13),
+          hintStyle: TextStyle(
+            color: AppColors.textDark.withValues(alpha: 0.4),
+            fontSize: 13,
+          ),
           prefixIcon: const Icon(Icons.search, color: AppColors.textGrey),
-          filled: true, fillColor: Colors.white,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: AppColors.secondary, width: 1.5)),
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(
+              color: AppColors.secondary,
+              width: 1.5,
+            ),
+          ),
           contentPadding: const EdgeInsets.symmetric(vertical: 14),
         ),
       ),
@@ -174,12 +226,26 @@ class _EmptyState extends StatelessWidget {
   const _EmptyState();
   @override
   Widget build(BuildContext context) {
-    return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-      Icon(Icons.receipt_long_outlined, size: 56, color: AppColors.textGrey.withValues(alpha: 0.4)),
-      const SizedBox(height: 12),
-      Text('Belum ada riwayat', style: TextStyle(
-        fontSize: 15, color: AppColors.textDark.withValues(alpha: 0.4))),
-    ]));
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.receipt_long_outlined,
+            size: 56,
+            color: AppColors.textGrey.withValues(alpha: 0.4),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Belum ada riwayat',
+            style: TextStyle(
+              fontSize: 15,
+              color: AppColors.textDark.withValues(alpha: 0.4),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -188,8 +254,12 @@ class _ErrorState extends StatelessWidget {
   const _ErrorState({this.error});
   @override
   Widget build(BuildContext context) {
-    return Center(child: Text('Gagal memuat\n$error',
-      textAlign: TextAlign.center,
-      style: TextStyle(color: AppColors.textDark.withValues(alpha: 0.5))));
+    return Center(
+      child: Text(
+        'Gagal memuat\n$error',
+        textAlign: TextAlign.center,
+        style: TextStyle(color: AppColors.textDark.withValues(alpha: 0.5)),
+      ),
+    );
   }
 }

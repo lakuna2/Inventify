@@ -75,7 +75,7 @@ class LaporanBulan extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(p['nama'], style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textDark)),
+                  Text(p['name'], style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textDark)),
                   const SizedBox(height: 5),
                   ClipRRect(borderRadius: BorderRadius.circular(3),
                     child: LinearProgressIndicator(

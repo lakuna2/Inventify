@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:inventify/controllers/auth.dart';
-import 'package:inventify/kasir/kasir_beranda.dart';
-import 'package:inventify/owner/owner_beranda.dart';
+import 'package:inventify/kasir/kasir_navbar.dart';
+import 'package:inventify/owner/owner_navbar.dart';
 import 'package:inventify/theme.dart';
 import 'package:inventify/widgets/auth_link.dart';
 
@@ -56,12 +56,14 @@ class _MasukPageState extends State<MasukPage> {
           if (role == 'pemilik') {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => const OwnerDashboard()),
+              MaterialPageRoute(builder: (context) => const OwnerBottomNavbar()),
             );
           } else if (role == 'kasir') {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => const Beranda()),
+              MaterialPageRoute(
+                builder: (context) => const BottomNavigationKasir(),
+              ),
             );
           } else {
             ScaffoldMessenger.of(context).showSnackBar(

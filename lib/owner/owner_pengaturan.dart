@@ -67,11 +67,15 @@ class _OwnerPengaturanState extends State<OwnerPengaturan> {
     try {
       final txList = await _svc.getTransaksi();
       await _svc.hapusSemua(txList.map((tx) => tx['id'] as String).toList());
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Semua riwayat dihapus'), backgroundColor: Color(0xFF1D9E75)));
+      }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Gagal: $e'), backgroundColor: AppColors.habis));
+      }
     }
   }
 

@@ -56,7 +56,8 @@ class _OwnerLaporanState extends State<OwnerLaporan>
   Future<void> _fetchStok() async {
     setState(() => _loadStok = true);
     try {
-      final d = await _svc.getStokTipis();
+      // Ganti getStokTipis() → getAllProdukStok() agar semua produk tampil
+      final d = await _svc.getAllProdukStok();
       if (mounted) setState(() { _stokData = d; _loadStok = false; });
     } catch (_) { if (mounted) setState(() => _loadStok = false); }
   }
