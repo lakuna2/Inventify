@@ -85,21 +85,28 @@ class _TransaksiState extends State<Transaksi> {
     return Scaffold(
       // ← tambah ini
       backgroundColor: AppColors.background,
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Column(
           children: [
             _Header(),
-
-            // ── Scanner selalu tampil ──
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-              child: _ScannerArea(
-                onDetected: _onBarcode,
-                loading: _loadingBarcode,
-                lastScanned: _lastScanned,
+            SingleChildScrollView(
+              // ✅ wrap scanner saja
+              child: Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                  child: _ScannerArea(
+                    onDetected: _onBarcode,
+                    loading: _loadingBarcode,
+                    lastScanned: _lastScanned,
+                  ),
+                ),
               ),
             ),
-
+            
             // ── Keranjang ──
             Expanded(
               child: ListenableBuilder(
@@ -212,6 +219,8 @@ class _ScannerArea extends StatelessWidget {
                 )
               : const SizedBox(key: ValueKey('empty'), height: 8),
         ),
+        const SizedBox(height: 4),
+        _ManualBarcodeInput(onSubmit: onDetected),
       ],
     );
   }
@@ -386,6 +395,61 @@ class _Footer extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ManualBarcodeInput extends StatelessWidget {
+  final void Function(String) onSubmit;
+  _ManualBarcodeInput({required this.onSubmit});
+  final _ctrl = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: _ctrl,
+            decoration: InputDecoration(
+              hintText: 'Atau input barcode manual...',
+              hintStyle: TextStyle(
+                color: AppColors.textDark.withValues(alpha: 0.4),
+                fontSize: 13,
+              ),
+              filled: true,
+              fillColor: AppColors.background,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                vertical: 12,
+                horizontal: 12,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        ElevatedButton(
+          onPressed: () {
+            if (_ctrl.text.trim().isNotEmpty) onSubmit(_ctrl.text.trim());
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.secondary,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            elevation: 0,
+          ),
+          child: const Text(
+            'OK',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
+      ],
     );
   }
 }

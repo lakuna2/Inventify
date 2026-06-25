@@ -13,7 +13,7 @@ String rupiahFormat(double v) {
   }
   return 'Rp ${buf.toString().split('').reversed.join()}';
 }
- 
+
 class CartItemTile extends StatelessWidget {
   final CartItem item;
   final CartController cart;

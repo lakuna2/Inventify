@@ -1,15 +1,21 @@
+// ignore_for_file: unnecessary_underscores
+
 import 'package:flutter/material.dart';
 import 'package:inventify/theme.dart';
 
 class ProfilHeader extends StatelessWidget {
   final String nama, email;
   final DateTime? joinDate;
+  final Map<String, int>? stats;
+  final String? avatar;
 
   const ProfilHeader({
     super.key,
     required this.nama,
     required this.email,
     this.joinDate,
+    this.stats,
+    this.avatar,
   });
 
   String get _inisial {
@@ -37,28 +43,27 @@ class ProfilHeader extends StatelessWidget {
 
         // Avatar + info
         Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-          Stack(children: [
-            Container(
-              width: 64, height: 64,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFFEEEDFE),
-                border: Border.all(color: const Color(0xFF7F77DD), width: 2),
-              ),
-              child: Center(child: Text(_inisial,
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Color(0xFF3C3489)))),
+          Container(
+            width: 64, height: 64,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFFEEEDFE),
+              border: Border.all(color: const Color(0xFF7F77DD), width: 2),
             ),
-            Positioned(bottom: 0, right: 0,
-              child: Container(
-                width: 20, height: 20,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF7F77DD),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
-                ),
-                child: const Icon(Icons.edit, size: 10, color: Colors.white),
-              )),
-          ]),
+            child: avatar != null
+                ? ClipOval(
+                    child: Image.asset(
+                      'assets/avatar/$avatar',
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Center(
+                        child: Text(_inisial,
+                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Color(0xFF3C3489))),
+                      ),
+                    ),
+                  )
+                : Center(child: Text(_inisial,
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Color(0xFF3C3489)))),
+          ),
           const SizedBox(width: 14),
 
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -90,11 +95,9 @@ class ProfilHeader extends StatelessWidget {
 
         // Statistik ringkas
         Row(children: [
-          _stat('Transaksi', '—'),
+          _stat('Total Transaksi', stats != null ? '${stats!['transaksi']}' : '—'),
           _divider(),
-          _stat('Produk Input', '—'),
-          _divider(),
-          _stat('Hari Aktif', '—'),
+          _stat('Total Produk', stats != null ? '${stats!['produkInput']}' : '—'),
         ]),
       ]),
     );

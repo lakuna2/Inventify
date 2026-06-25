@@ -142,7 +142,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                         ),
                       ),
                       const Text(
-                        'Dashboard Pemilik',
+                        'Pemilik Toko',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,

@@ -1,9 +1,7 @@
-// ignore_for_file: avoid_print
-
 import 'package:flutter/material.dart';
 import 'package:inventify/controllers/auth.dart';
-
-// import 'package:inventify/pages/masuk.dart';
+import 'package:custom_quick_alert/custom_quick_alert.dart';
+import 'package:inventify/pages/masuk.dart';
 import 'package:inventify/theme.dart';
 import 'package:inventify/widgets/auth_link.dart';
 
@@ -20,63 +18,74 @@ class RegisterPage extends StatefulWidget {
 class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
 
-  final _namaCtrl = TextEditingController();
+  final _namaPemilikCtrl = TextEditingController();
+  final _namaTokoCtrl = TextEditingController();
+  final _alamatTokoCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _konfirmasiCtrl = TextEditingController();
 
-  String? _selectedRole;
+  // Role sudah fixed — tidak perlu dipilih
+  static const String _role = 'Pemilik';
+
   bool _showPassword = false;
   bool _showKonfirmasi = false;
   bool _isLoading = false;
 
-  final List<String> _roles = ['Kasir', 'Pemilik'];
-
   @override
   void dispose() {
-    _namaCtrl.dispose();
+    _namaPemilikCtrl.dispose();
+    _namaTokoCtrl.dispose();
+    _alamatTokoCtrl.dispose();
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     _konfirmasiCtrl.dispose();
     super.dispose();
   }
 
-  // ── REGISTER HANDLER ──
-void _handleRegister() async {
-  if (!_formKey.currentState!.validate()) return;
+  void _handleRegister() async {
+    if (!_formKey.currentState!.validate()) return;
 
-  if (_selectedRole == null) {
-    _showSnackbar('Pilih jenis pengguna terlebih dahulu');
-    return;
-  }
+    setState(() => _isLoading = true);
 
-  setState(() => _isLoading = true);
+    try {
+      await Auth().regis(
+        _namaPemilikCtrl.text.trim(),
+        _emailCtrl.text.trim(),
+        _passwordCtrl.text,
+        _role,
+        _namaTokoCtrl.text.trim(),
+        _alamatTokoCtrl.text.trim(),
+      );
 
-  try {
-    await Auth().regis(
-      _namaCtrl.text.trim(),
-      _emailCtrl.text.trim(),
-      _passwordCtrl.text,
-      _selectedRole!,
-    );
-    _showSnackbar('Registrasi berhasil sebagai $_selectedRole!');
-  } catch (e) {
-    _showSnackbar('Registrasi gagal: $e');
-  } finally {
-    setState(() => _isLoading = false);
-  }
-}
+      // Matikan loading dulu sebelum tampil alert
+      if (mounted) setState(() => _isLoading = false);
 
-  void _showSnackbar(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: AppColors.primary,
-        behavior: SnackBarBehavior.floating,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+      CustomQuickAlert.confirm(
+        title: 'Registrasi Berhasil!',
+        message:
+            'Akun berhasil dibuat.\nLink verifikasi telah dikirim ke email Anda.\nJika belum ditemukan, silakan cek folder Spam atau Promosi.',
+        confirmBtnColor: AppColors.primary,
+        onConfirm: () {
+          Future.microtask(() {
+            Navigator.pushReplacement(
+              // ignore: use_build_context_synchronously
+              context,
+              MaterialPageRoute(builder: (_) => const MasukPage()),
+            );
+          });
+        },
+      );
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+
+      CustomQuickAlert.error(
+        title: 'Registrasi Gagal',
+        message: e.toString(),
+        confirmText: 'Coba Lagi',
+        confirmBtnColor: Colors.redAccent,
+      );
+    }
   }
 
   @override
@@ -119,10 +128,7 @@ void _handleRegister() async {
   // LOGO
   // ----------------------------------------------------------
   Widget _buildLogo() {
-    return Image.asset(
-      'assets/logo.jpg',
-      width: 180,
-    );
+    return Image.asset('assets/logo.jpg', width: 180);
   }
 
   // ----------------------------------------------------------
@@ -146,31 +152,75 @@ void _handleRegister() async {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Registrasi',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
-            ),
+          // ── Judul + Badge Pemilik ──
+          Row(
+            children: [
+              const Text(
+                'Registrasi',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(
+                      Icons.store_rounded,
+                      size: 14,
+                      color: AppColors.primary,
+                    ),
+                    SizedBox(width: 4),
+                    Text(
+                      'Pemilik Toko',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
+
+          const SizedBox(height: 6),
+          const Text(
+            'Isi data di bawah untuk membuat akun toko Anda.',
+            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          ),
+
           const SizedBox(height: 20),
 
-          _buildDropdownRole(),
-          const SizedBox(height: 14),
+          // ── Section: Data Pemilik ──
+          _buildSectionLabel('Data Pemilik'),
+          const SizedBox(height: 10),
 
           _buildTextField(
-            controller: _namaCtrl,
-            hint: 'Masukkan Nama',
+            controller: _namaPemilikCtrl,
+            hint: 'Nama Pemilik',
             icon: Icons.person_outline_rounded,
-            validator: (v) =>
-                v == null || v.trim().isEmpty ? 'Nama tidak boleh kosong' : null,
+            validator: (v) => v == null || v.trim().isEmpty
+                ? 'Nama pemilik tidak boleh kosong'
+                : null,
           ),
           const SizedBox(height: 14),
 
           _buildTextField(
             controller: _emailCtrl,
-            hint: 'Masukkan Email',
+            hint: 'E-mail',
             icon: Icons.email_outlined,
             keyboardType: TextInputType.emailAddress,
             validator: (v) {
@@ -187,7 +237,7 @@ void _handleRegister() async {
 
           _buildTextField(
             controller: _passwordCtrl,
-            hint: 'Masukkan Kata Sandi',
+            hint: 'Password',
             icon: Icons.lock_outline_rounded,
             obscure: !_showPassword,
             suffixIcon: IconButton(
@@ -198,12 +248,11 @@ void _handleRegister() async {
                 color: AppColors.textSecondary,
                 size: 20,
               ),
-              onPressed: () =>
-                  setState(() => _showPassword = !_showPassword),
+              onPressed: () => setState(() => _showPassword = !_showPassword),
             ),
             validator: (v) {
               if (v == null || v.isEmpty) {
-                return 'Kata sandi tidak boleh kosong';
+                return 'Password tidak boleh kosong';
               }
               if (v.length < 6) return 'Minimal 6 karakter';
               return null;
@@ -213,7 +262,7 @@ void _handleRegister() async {
 
           _buildTextField(
             controller: _konfirmasiCtrl,
-            hint: 'Konfirmasi Kata Sandi',
+            hint: 'Konfirmasi Password',
             icon: Icons.lock_outline_rounded,
             obscure: !_showKonfirmasi,
             suffixIcon: IconButton(
@@ -228,11 +277,38 @@ void _handleRegister() async {
                   setState(() => _showKonfirmasi = !_showKonfirmasi),
             ),
             validator: (v) {
-              if (v == null || v.isEmpty) return 'Konfirmasi kata sandi';
-              if (v != _passwordCtrl.text) return 'Kata sandi tidak sama';
+              if (v == null || v.isEmpty) return 'Konfirmasi password';
+              if (v != _passwordCtrl.text) return 'Password tidak sama';
               return null;
             },
           ),
+
+          const SizedBox(height: 20),
+
+          // ── Section: Data Toko ──
+          _buildSectionLabel('Data Toko'),
+          const SizedBox(height: 10),
+
+          _buildTextField(
+            controller: _namaTokoCtrl,
+            hint: 'Nama Toko',
+            icon: Icons.store_outlined,
+            validator: (v) => v == null || v.trim().isEmpty
+                ? 'Nama toko tidak boleh kosong'
+                : null,
+          ),
+          const SizedBox(height: 14),
+
+          _buildTextField(
+            controller: _alamatTokoCtrl,
+            hint: 'Alamat Toko',
+            icon: Icons.location_on_outlined,
+            maxLines: 3,
+            validator: (v) => v == null || v.trim().isEmpty
+                ? 'Alamat toko tidak boleh kosong'
+                : null,
+          ),
+
           const SizedBox(height: 24),
 
           _buildRegisterButton(),
@@ -242,58 +318,29 @@ void _handleRegister() async {
   }
 
   // ----------------------------------------------------------
-  // DROPDOWN ROLE
+  // SECTION LABEL
   // ----------------------------------------------------------
-  Widget _buildDropdownRole() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.inputBg,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: _selectedRole,
-          isExpanded: true,
-          hint: Row(
-            children: [
-              const Icon(Icons.badge_outlined,
-                  color: AppColors.textSecondary, size: 20),
-              const SizedBox(width: 10),
-              Text(
-                'Jenis Pengguna',
-                style: TextStyle(
-                  color: AppColors.textHint,
-                  fontSize: 14,
-                ),
-              ),
-            ],
+  Widget _buildSectionLabel(String label) {
+    return Row(
+      children: [
+        Container(
+          width: 3,
+          height: 14,
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(4),
           ),
-          icon: const Icon(Icons.keyboard_arrow_down_rounded,
-              color: AppColors.textSecondary),
-          dropdownColor: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          style: const TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-          items: _roles
-              .map((role) => DropdownMenuItem(
-                    value: role,
-                    child: Row(
-                      children: [
-                        const Icon(Icons.badge_outlined,
-                            color: AppColors.textSecondary, size: 20),
-                        const SizedBox(width: 10),
-                        Text(role),
-                      ],
-                    ),
-                  ))
-              .toList(),
-          onChanged: (val) => setState(() => _selectedRole = val),
         ),
-      ),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      ],
     );
   }
 
@@ -307,12 +354,14 @@ void _handleRegister() async {
     bool obscure = false,
     Widget? suffixIcon,
     TextInputType? keyboardType,
+    int maxLines = 1,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
       obscureText: obscure,
       keyboardType: keyboardType,
+      maxLines: maxLines,
       validator: validator,
       style: const TextStyle(
         fontSize: 14,
@@ -321,16 +370,18 @@ void _handleRegister() async {
       ),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(
-          color: AppColors.textHint,
-          fontSize: 14,
+        hintStyle: const TextStyle(color: AppColors.textHint, fontSize: 14),
+        prefixIcon: Padding(
+          padding: EdgeInsets.only(bottom: maxLines > 1 ? 40 : 0),
+          child: Icon(icon, color: AppColors.textSecondary, size: 20),
         ),
-        prefixIcon: Icon(icon, color: AppColors.textSecondary, size: 20),
         suffixIcon: suffixIcon,
         filled: true,
         fillColor: AppColors.inputBg,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -341,18 +392,15 @@ void _handleRegister() async {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:
-              const BorderSide(color: AppColors.accent, width: 1.5),
+          borderSide: const BorderSide(color: AppColors.accent, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:
-              const BorderSide(color: Colors.redAccent, width: 1.5),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:
-              const BorderSide(color: Colors.redAccent, width: 1.5),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
         ),
         errorStyle: const TextStyle(fontSize: 11),
       ),
@@ -387,7 +435,7 @@ void _handleRegister() async {
                 ),
               )
             : const Text(
-                'Registrasi',
+                'Daftar Sekarang',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,

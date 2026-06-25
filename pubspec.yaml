@@ -29,16 +29,53 @@ environment:
 # versions available, run `flutter pub outdated`.
 dependencies:
   cloud_firestore: ^6.3.0
+  csv: ^8.0.0
   cupertino_icons: ^1.0.8
+  custom_quick_alert: ^2.1.1
+  encrypt: ^5.0.3
+  esc_pos_utils_plus: ^2.0.4
   firebase_auth: ^6.4.0
   firebase_core: ^4.7.0
   fl_chart: ^0.68.0
   flutter:
     sdk: flutter
-  mobile_scanner: ^7.2.0
-  provider: ^6.1.5+1
-  splash_master: ^0.0.3
+  flutter_launcher_icons: ^0.14.4
   intl: ^0.18.0
+  mobile_scanner: ^7.2.0
+  path_provider: ^2.1.5
+  pdf: ^3.12.0
+  permission_handler: ^12.0.1
+  print_bluetooth_thermal: ^1.2.1
+  printing: ^5.14.3
+  provider: ^6.1.5+1
+  share_plus: ^13.1.0
+  splash_master: ^0.0.3
+  video_player: ^2.11.1
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icon/icon.png"
+  min_sdk_android: 21 # opsional, default 21
+
+  # Opsional: Adaptive icon untuk Android 8+
+  adaptive_icon_background: "#FFFFFF" # atau path gambar background
+  adaptive_icon_foreground: "assets/icon/icon.png"
+  adaptive_icon_foreground_inset: 16    # kasih padding biar logo gak terpotong saat dibulatkan
+
+  # Opsional: kalau mau generate juga untuk web/windows/macos
+  web:
+    generate: true
+    image_path: "assets/icon/icon.png"
+    background_color: "#hexcode"
+    theme_color: "#hexcode"
+  windows:
+    generate: true
+    image_path: "assets/icon/icon.png"
+    icon_size: 48
+  macos:
+    generate: true
+    image_path: "assets/icon/icon.png"
 
 dev_dependencies:
   flutter_lints: ^6.0.0
@@ -58,6 +95,7 @@ flutter:
   assets:
     - assets/splash_screen.mp4
     - assets/logo.jpg
+    - assets/avatar/
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
   # For details regarding adding assets from package dependencies, see

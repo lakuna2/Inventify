@@ -1,67 +1,92 @@
+// ignore_for_file: use_build_context_synchronously
+
+import 'package:custom_quick_alert/custom_quick_alert.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:inventify/pages/masuk.dart';
 import 'package:inventify/theme.dart';
 import 'package:inventify/widgets/profil/all_sheets.dart';
+import 'package:inventify/widgets/profil/printer_setup_sheet.dart';
 import 'package:inventify/widgets/profil/profil_header.dart';
 import 'package:inventify/widgets/profil/profil_menu_section.dart';
 import 'package:inventify/widgets/profil/edit_profil_sheet.dart';
+import 'package:inventify/services/printer_service.dart';
+import 'package:inventify/services/user_service.dart';
 
-class Profil extends StatelessWidget {
+class Profil extends StatefulWidget {
   const Profil({super.key});
+
+  @override
+  State<Profil> createState() => _ProfilState();
+}
+
+class _ProfilState extends State<Profil> {
+  final _printer = PrinterService();
+  final _userService = UserService();
+  Map<String, int>? _stats;
+  int _refreshKey = 0; // Key untuk force refresh
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStats();
+  }
+
+  Future<void> _loadStats() async {
+    final stats = await _userService.getKasirStats();
+    if (mounted) {
+      setState(() => _stats = stats);
+    }
+  }
 
   Future<Map<String, dynamic>> _loadUserData() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return {};
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .get();
+    final doc =
+        await FirebaseFirestore.instance.collection('users').doc(uid).get();
     return doc.data() ?? {};
   }
 
   Future<void> _logout(BuildContext context) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
-          'Keluar?',
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            color: AppColors.textDark,
-          ),
-        ),
-        content: const Text(
-          'Kamu akan keluar dari akun ini.',
-          style: TextStyle(color: AppColors.textGrey),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text(
-              'Batal',
-              style: TextStyle(color: AppColors.textGrey),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.habis,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+    CustomQuickAlert.confirm(
+      title: 'Konfirmasi Logout',
+      message: 'Yakin ingin Logout?',
+      confirmBtnColor: AppColors.primary,
+      onConfirm: () async {
+        try {
+          await FirebaseAuth.instance.signOut();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Berhasil logout!'),
+                backgroundColor: Color(0xFF1D9E75),
               ),
-            ),
-            child: const Text(
-              'Keluar',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
-      ),
+            );
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (_) => const MasukPage()),
+              (route) => false,
+            );
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Gagal logout: $e'),
+                backgroundColor: AppColors.habis,
+              ),
+            );
+          }
+        }
+      },
     );
-    if (confirm == true) await FirebaseAuth.instance.signOut();
+  }
+
+  // Buka sheet printer dan rebuild setelah kembali agar status terupdate
+  Future<void> _bukaSheetPrinter(BuildContext context) async {
+    await PrinterSetupSheet.show(context);
+    if (mounted) setState(() {});
   }
 
   @override
@@ -70,22 +95,41 @@ class Profil extends StatelessWidget {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: FutureBuilder<Map<String, dynamic>>(
+          key: ValueKey(_refreshKey), // Force rebuild with refresh key
           future: _loadUserData(),
           builder: (context, snap) {
+            // Tampilkan loading saat masih fetch data
+            if (snap.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            // Handle error
+            if (snap.hasError) {
+              return Center(
+                child: Text('Error: ${snap.error}'),
+              );
+            }
+
             final user = snap.data ?? {};
-            final nama =
-                user['nama'] ??
+            final nama = user['nama'] ??
                 FirebaseAuth.instance.currentUser?.displayName ??
                 'Kasir';
-            final email =
-                user['email'] ?? FirebaseAuth.instance.currentUser?.email ?? '';
+            final email = user['email'] ??
+                FirebaseAuth.instance.currentUser?.email ??
+                '';
             final joinDate =
                 (user['createdAt'] as dynamic)?.toDate() as DateTime?;
+            final avatar = user['avatar'] as String?;
 
             return ListView(
               children: [
-                // Header profil + statistik
-                ProfilHeader(nama: nama, email: email, joinDate: joinDate),
+                ProfilHeader(
+                  nama: nama,
+                  email: email,
+                  joinDate: joinDate,
+                  stats: _stats,
+                  avatar: avatar,
+                ),
                 const SizedBox(height: 12),
 
                 Padding(
@@ -102,8 +146,16 @@ class Profil extends StatelessWidget {
                             iconColor: const Color(0xFF3C3489),
                             title: 'Edit Profil',
                             subtitle: 'Nama, email, foto',
-                            onTap: () =>
-                                EditProfilSheet.show(context, user: user),
+                            onTap: () async {
+                              // Tunggu sheet selesai dan cek hasilnya
+                              final result = await EditProfilSheet.show(context, user: user);
+                              // Jika berhasil (result == true), langsung refresh
+                              if (result == true && mounted) {
+                                setState(() {
+                                  _refreshKey++;
+                                });
+                              }
+                            },
                           ),
                           ProfilMenuItem(
                             icon: Icons.lock_outline_rounded,
@@ -117,35 +169,25 @@ class Profil extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
 
-                      // Seksi Preferensi
-                      ProfilMenuSection(
-                        label: 'Preferensi',
-                        items: [
-                          ProfilMenuItem(
-                            icon: Icons.notifications_none_rounded,
-                            iconBg: const Color(0xFFFAEEDA),
-                            iconColor: const Color(0xFF633806),
-                            title: 'Notifikasi',
-                            subtitle: 'Stok tipis & peringatan',
-                            badge: '3',
-                            onTap: () => NotifikasiSheet.show(context),
-                          ),
-                          ProfilMenuItem(
-                            icon: Icons.language_rounded,
-                            iconBg: const Color(0xFFF1EFE8),
-                            iconColor: const Color(0xFF444441),
-                            title: 'Bahasa',
-                            subtitle: 'Indonesia',
-                            onTap: () {},
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-
                       // Seksi Lainnya
                       ProfilMenuSection(
                         label: 'Lainnya',
                         items: [
+                          // ── PRINTER BLUETOOTH ──
+                          ProfilMenuItem(
+                            icon: Icons.print_rounded,
+                            iconBg: const Color(0xFFE6F1FB),
+                            iconColor: const Color(0xFF185FA5),
+                            title: 'Printer Bluetooth',
+                            subtitle: _printer.isConnected
+                                ? 'Terhubung: ${_printer.connectedDeviceName}'
+                                : 'Belum terhubung — tap untuk setup',
+                            badge: _printer.isConnected ? null : '!',
+                            badgeColor: _printer.isConnected
+                                ? null
+                                : AppColors.stokTipis,
+                            onTap: () => _bukaSheetPrinter(context),
+                          ),
                           ProfilMenuItem(
                             icon: Icons.info_outline_rounded,
                             iconBg: const Color(0xFFFCEBEB),
@@ -166,8 +208,25 @@ class Profil extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
 
-                      // Tombol Keluar
-                      _LogoutButton(onTap: () => _logout(context)),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _logout(context),
+                          icon: const Icon(Icons.logout_rounded, size: 17),
+                          label: const Text(
+                            'Keluar dari Akun',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            foregroundColor: AppColors.habis,
+                            side: const BorderSide(color: AppColors.habis),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 24),
                     ],
                   ),
@@ -175,64 +234,6 @@ class Profil extends StatelessWidget {
               ],
             );
           },
-        ),
-      ),
-    );
-  }
-}
-
-class _LogoutButton extends StatelessWidget {
-  final VoidCallback onTap;
-  const _LogoutButton({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: AppColors.habis.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.habis.withValues(alpha: 0.25)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: AppColors.habis.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.logout_rounded,
-                color: AppColors.habis,
-                size: 18,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Keluar',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.habis,
-                  ),
-                ),
-                Text(
-                  'Logout dari akun ini',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppColors.habis.withValues(alpha: 0.7),
-                  ),
-                ),
-              ],
-            ),
-          ],
         ),
       ),
     );

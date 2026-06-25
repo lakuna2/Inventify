@@ -32,10 +32,10 @@ class OwnerReportService {
   }
 
   // ── Ringkasan bulanan ─────────────────────────────
-  Future<Map<String, dynamic>> getRingkasanBulan() async {
-    final now = DateTime.now();
-    final dari = DateTime(now.year, now.month, 1);
-    final sampai = DateTime(now.year, now.month + 1, 1);
+  Future<Map<String, dynamic>> getRingkasanBulan({DateTime? tanggal}) async {
+    final targetDate = tanggal ?? DateTime.now();
+    final dari = DateTime(targetDate.year, targetDate.month, 1);
+    final sampai = DateTime(targetDate.year, targetDate.month + 1, 1);
 
     final snap = await _db
         .collection('transaksi')

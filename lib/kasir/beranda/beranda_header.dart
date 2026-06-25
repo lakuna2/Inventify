@@ -1,12 +1,39 @@
-// ignore_for_file: deprecated_member_use
+// ignore_for_file: deprecated_member_use, unnecessary_underscores
 
 import 'package:flutter/material.dart';
+import 'package:inventify/services/user_service.dart';
 
 ////////////////////////////////////////////////////////////
 /// HEADER BANNER
 ////////////////////////////////////////////////////////////
-class HeaderBanner extends StatelessWidget {
+class HeaderBanner extends StatefulWidget {
   const HeaderBanner({super.key});
+
+  @override
+  State<HeaderBanner> createState() => _HeaderBannerState();
+}
+
+class _HeaderBannerState extends State<HeaderBanner> {
+  final _userService = UserService();
+  String _namaKasir = 'Kasir';
+  String? _avatar;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final nama = await _userService.getNamaKasir();
+    final avatar = await _userService.getCurrentAvatar();
+    if (mounted) {
+      setState(() {
+        _namaKasir = nama;
+        _avatar = avatar;
+      });
+    }
+  }
 
   String _greeting() {
     final h = DateTime.now().hour;
@@ -18,9 +45,10 @@ class HeaderBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final statusBarHeight = MediaQuery.of(context).padding.top;
     return Container(
       width: double.infinity,
-      height: 210,
+      height: 210 + statusBarHeight,
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [Color(0xFF0D1B5E), Color(0xFF1565C0), Color(0xFF00ACC1)],
@@ -42,14 +70,18 @@ class HeaderBanner extends StatelessWidget {
           ),
           Positioned(top: 30, left: 20, child: const _DotGrid()),
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 36),
+            padding: EdgeInsets.fromLTRB(
+              20,
+              MediaQuery.of(context).padding.top + 12,
+              20,
+              36,
+            ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _avatarIcon(),
                 const SizedBox(width: 12),
                 Expanded(child: _userInfo()),
-                _notifButton(),
               ],
             ),
           ),
@@ -72,7 +104,19 @@ class HeaderBanner extends StatelessWidget {
       border: Border.all(color: const Color(0xFF64FFDA), width: 2),
       color: Colors.white.withOpacity(0.15),
     ),
-    child: const Icon(Icons.person_rounded, color: Colors.white, size: 26),
+    child: _avatar != null
+        ? ClipOval(
+            child: Image.asset(
+              'assets/avatar/$_avatar',
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const Icon(
+                Icons.person_rounded,
+                color: Colors.white,
+                size: 26,
+              ),
+            ),
+          )
+        : const Icon(Icons.person_rounded, color: Colors.white, size: 26),
   );
 
   Widget _userInfo() => Column(
@@ -83,9 +127,9 @@ class HeaderBanner extends StatelessWidget {
         style: TextStyle(color: Colors.white.withOpacity(0.80), fontSize: 13),
       ),
       const SizedBox(height: 2),
-      const Text(
-        'Aulia',
-        style: TextStyle(
+      Text(
+        _namaKasir,
+        style: const TextStyle(
           color: Colors.white,
           fontSize: 20,
           fontWeight: FontWeight.w700,
@@ -119,36 +163,6 @@ class HeaderBanner extends StatelessWidget {
         ),
       ],
     ),
-  );
-
-  Widget _notifButton() => Stack(
-    children: [
-      Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: const Icon(
-          Icons.notifications_rounded,
-          color: Colors.white,
-          size: 22,
-        ),
-      ),
-      Positioned(
-        top: 6,
-        right: 6,
-        child: Container(
-          width: 8,
-          height: 8,
-          decoration: const BoxDecoration(
-            color: Color(0xFF64FFDA),
-            shape: BoxShape.circle,
-          ),
-        ),
-      ),
-    ],
   );
 }
 

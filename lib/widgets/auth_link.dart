@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:inventify/pages/masuk.dart';
 import 'package:inventify/pages/registrasi.dart';
 import 'package:inventify/theme.dart';
-// import 'package:inventify/theme.dart';
 
 enum AuthMode { login, register }
 

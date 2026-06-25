@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:inventify/widgets/owner/summary_card.dart';
 import 'package:inventify/widgets/owner/owner_helpers.dart';
@@ -7,30 +9,100 @@ class LaporanBulan extends StatelessWidget {
   final bool loading;
   final Map<String, dynamic> data;
   final VoidCallback onRefresh;
+  final DateTime selectedMonth;
+  final Function(DateTime) onMonthChange;
 
-  const LaporanBulan({super.key, required this.loading, required this.data, required this.onRefresh});
+  const LaporanBulan({
+    super.key,
+    required this.loading,
+    required this.data,
+    required this.onRefresh,
+    required this.selectedMonth,
+    required this.onMonthChange,
+  });
 
   static const _bulanLabel = ['','Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
   static const _rankColor = [Color(0xFFFFB800), Color(0xFF9E9E9E), Color(0xFFCD7F32), AppColors.primary, AppColors.secondary];
+
+  List<DateTime> _getLast6Months() {
+    final now = DateTime.now();
+    final months = <DateTime>[];
+    for (int i = 0; i < 6; i++) {
+      final month = DateTime(now.year, now.month - i, 1);
+      months.add(month);
+    }
+    return months;
+  }
 
   @override
   Widget build(BuildContext context) {
     if (loading) return const Center(child: CircularProgressIndicator(color: AppColors.primary));
 
-    final now = DateTime.now();
     final topProduk = (data['topProduk'] as List<dynamic>?)
         ?.map((e) => e as Map<String, dynamic>).toList() ?? [];
     final maxProduk = topProduk.isEmpty ? 1.0
         : topProduk.map((e) => (e['total'] as num).toDouble()).reduce((a, b) => a > b ? a : b);
     final pendapatan = (data['pendapatan'] as num?)?.toDouble() ?? 0;
     final transaksi = (data['transaksi'] as int?) ?? 0;
+    final availableMonths = _getLast6Months();
 
     return RefreshIndicator(
       onRefresh: () async => onRefresh(),
       color: AppColors.primary,
       child: ListView(padding: const EdgeInsets.all(16), children: [
-        Text('${_bulanLabel[now.month]} ${now.year}',
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textDark)),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                '${_bulanLabel[selectedMonth.month]} ${selectedMonth.year}',
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textDark),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+              ),
+              child: PopupMenuButton<DateTime>(
+                onSelected: onMonthChange,
+                offset: const Offset(0, 40),
+                icon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Text('Pilih Bulan', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                    SizedBox(width: 4),
+                    Icon(Icons.arrow_drop_down, size: 18, color: AppColors.primary),
+                  ],
+                ),
+                itemBuilder: (context) => availableMonths.map((month) {
+                  final isSelected = month.year == selectedMonth.year && month.month == selectedMonth.month;
+                  return PopupMenuItem<DateTime>(
+                    value: month,
+                    child: Row(
+                      children: [
+                        if (isSelected)
+                          const Icon(Icons.check, size: 16, color: AppColors.primary)
+                        else
+                          const SizedBox(width: 16),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${_bulanLabel[month.month]} ${month.year}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                            color: isSelected ? AppColors.primary : AppColors.textDark,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 10),
 
         GridView.count(

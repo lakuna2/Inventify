@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:custom_quick_alert/custom_quick_alert.dart';
 import 'package:inventify/services/owner_report_service.dart';
 import 'package:inventify/widgets/owner/recent_tx_tile.dart';
 import 'package:inventify/widgets/owner/owner_helpers.dart';
 import 'package:inventify/owner/owner_histori_detail.dart';
 import 'package:inventify/owner/owner_histori_filter.dart';
 import 'package:inventify/theme.dart';
+import 'package:inventify/utils/alert_helper.dart';
 
 class OwnerHistori extends StatefulWidget {
   const OwnerHistori({super.key});
@@ -51,30 +53,33 @@ class _OwnerHistoriState extends State<OwnerHistori> {
   }
 
   Future<void> _hapusSatu(String id) async {
-    final ok = await confirmDelete(context,
-      judul: 'Hapus Transaksi',
-      isi: 'Transaksi #${id.substring(0, 8).toUpperCase()} akan dihapus permanen.');
-    if (!ok) return;
-    await _svc.hapusSatu(id);
-    setState(() { _all.removeWhere((tx) => tx['id'] == id); _applySearch(); });
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Transaksi dihapus'), backgroundColor: Color(0xFF1D9E75)));
-    }
+    CustomQuickAlert.confirm(
+      title: 'Hapus Transaksi?',
+      message: 'Transaksi #${id.substring(0, 8).toUpperCase()} akan dihapus permanen.',
+      confirmBtnColor: AppColors.habis,
+      onConfirm: () async {
+        await _svc.hapusSatu(id);
+        setState(() { _all.removeWhere((tx) => tx['id'] == id); _applySearch(); });
+        if (mounted) {
+          AlertHelper.success('Transaksi berhasil dihapus');
+        }
+      },
+    );
   }
 
   Future<void> _hapusSemua() async {
-    final ok = await confirmDelete(context,
-      judul: 'Hapus Semua',
-      isi: 'Semua ${_filtered.length} transaksi akan dihapus permanen.',
-      dangerous: true);
-    if (!ok) return;
-    await _svc.hapusSemua(_filtered.map((tx) => tx['id'] as String).toList());
-    await _load();
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Semua riwayat dihapus'), backgroundColor: Color(0xFF1D9E75)));
-    }
+    CustomQuickAlert.confirm(
+      title: 'Hapus Semua Transaksi?',
+      message: 'Semua ${_filtered.length} transaksi akan dihapus permanen. Tindakan ini tidak bisa dibatalkan.',
+      confirmBtnColor: AppColors.habis,
+      onConfirm: () async {
+        await _svc.hapusSemua(_filtered.map((tx) => tx['id'] as String).toList());
+        await _load();
+        if (mounted) {
+          AlertHelper.success('Semua riwayat berhasil dihapus');
+        }
+      },
+    );
   }
 
   bool get _hasFilter => _dari != null || _sampai != null || _kasir.isNotEmpty;

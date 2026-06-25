@@ -1,10 +1,13 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'package:custom_quick_alert/custom_quick_alert.dart';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:inventify/controllers/auth.dart';
 import 'package:inventify/kasir/kasir_navbar.dart';
+import 'package:inventify/main.dart';
 import 'package:inventify/owner/owner_navbar.dart';
 import 'package:inventify/theme.dart';
 import 'package:inventify/widgets/auth_link.dart';
@@ -40,58 +43,85 @@ class _MasukPageState extends State<MasukPage> {
 
     setState(() => _isLoading = true);
 
-    Auth()
-        .masuk(_emailCtrl.text, _passwordCtrl.text)
-        .then((_) async {
-          // Ambil data user dari Firestore
-          User? user = FirebaseAuth.instance.currentUser;
-          DocumentSnapshot userDoc = await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user!.uid)
-              .get();
+    try {
+      // 1. Login via Auth controller
+      await Auth().masuk(_emailCtrl.text, _passwordCtrl.text);
 
-          String role = (userDoc['role'] ?? '').toString().toLowerCase();
+      // 2. Ambil user yang sudah login
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception('Gagal mendapatkan data pengguna.');
 
-          // Navigasi berdasarkan role
-          if (role == 'pemilik') {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const OwnerBottomNavbar()),
-            );
-          } else if (role == 'kasir') {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const BottomNavigationKasir(),
-              ),
-            );
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Role pengguna tidak dikenali')),
-            );
-          }
-        })
-        .catchError((e) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(e.toString())));
-        })
-        .whenComplete(() => setState(() => _isLoading = false));
+      // 3. Ambil role dari Firestore
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      if (!doc.exists || doc.data() == null) {
+        throw Exception('Data pengguna tidak ditemukan.');
+      }
+
+      final role = (doc.data()!['role'] ?? '').toString().toLowerCase().trim();
+
+      // Tampilkan success alert, lalu navigate setelah dialog ditutup
+      CustomQuickAlert.success(
+        title: 'Selamat Datang! 👋',
+        message: 'Login berhasil. Selamat bekerja!',
+        confirmBtnColor: AppColors.primary,
+        titleColor: AppColors.textPrimary
+      ).then((_) {
+        // Navigate setelah dialog ditutup
+        if (role == 'kasir') {
+          navigatorKey.currentState?.pushReplacement(
+            MaterialPageRoute(builder: (_) => const BottomNavigationKasir()),
+          );
+        } else if (role == 'pemilik') {
+          navigatorKey.currentState?.pushReplacement(
+            MaterialPageRoute(builder: (_) => const OwnerBottomNavbar()),
+          );
+        } else {
+          FirebaseAuth.instance.signOut();
+          CustomQuickAlert.error(
+            title: 'Gagal',
+            message: 'Role "$role" tidak dikenali. Hubungi administrator.',
+          );
+        }
+      });
+    } catch (e) {
+      String message = 'Terjadi kesalahan';
+
+      if (e is FirebaseAuthException) {
+        message = _pesanError(e.code);
+      } else {
+        // Tangkap Exception biasa (email belum verifikasi, role tidak dikenali, dll)
+        message = e.toString().replaceFirst('Exception: ', '');
+      }
+
+      CustomQuickAlert.error(title: 'Oops...', message: message);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   // ── FORGOT PASSWORD ──
   void _handleForgotPassword() async {
     if (_emailCtrl.text.trim().isEmpty) {
-      _showSnackbar('Masukkan email terlebih dahulu');
+      CustomQuickAlert.warning(
+        title: 'Perhatian',
+        message: 'Masukkan email terlebih dahulu',
+      );
       return;
     }
     try {
       await FirebaseAuth.instance.sendPasswordResetEmail(
         email: _emailCtrl.text.trim(),
       );
-      _showSnackbar('Link reset kata sandi telah dikirim ke email');
+      CustomQuickAlert.success(
+        title: 'Email Terkirim',
+        message: 'Link reset kata sandi telah dikirim ke email Anda',
+      );
     } on FirebaseAuthException catch (e) {
-      _showSnackbar(_pesanError(e.code));
+      CustomQuickAlert.error(title: 'Gagal', message: _pesanError(e.code));
     }
   }
 
@@ -110,20 +140,11 @@ class _MasukPageState extends State<MasukPage> {
         return 'Akun dinonaktifkan';
       case 'too-many-requests':
         return 'Terlalu banyak percobaan, coba lagi nanti';
+      case 'email-not-verified':
+        return 'Email belum diverifikasi. Silakan cek email kamu.';
       default:
         return 'Terjadi kesalahan, coba lagi';
     }
-  }
-
-  void _showSnackbar(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: AppColors.primary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
   }
 
   @override

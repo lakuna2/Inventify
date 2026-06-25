@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'package:inventify/owner/owner_beranda.dart';
 import 'package:inventify/owner/owner_histori.dart';
+import 'package:inventify/owner/owner_kelola_kasir.dart';
 import 'package:inventify/owner/owner_laporan.dart';
 import 'package:inventify/owner/owner_pengaturan.dart';
 import 'package:inventify/theme.dart';
@@ -30,6 +31,7 @@ class _OwnerBottomNavbarState extends State<OwnerBottomNavbar> {
       OwnerDashboard(onNavigate: (index) => setState(() => _selectedIndex = index)),
       const OwnerHistori(),
       const OwnerLaporan(),
+      const OwnerKelolaKasir(),
       const OwnerPengaturan(),
     ];
   }
@@ -67,6 +69,7 @@ class _OwnerNavBar extends StatelessWidget {
       _NavItemData(icon: Icons.dashboard_rounded, label: 'Dashboard'),
       _NavItemData(icon: Icons.receipt_long_rounded, label: 'Histori'),
       _NavItemData(icon: Icons.bar_chart_rounded, label: 'Laporan'),
+      _NavItemData(icon: Icons.people_alt_rounded, label: 'Kasir'),
       _NavItemData(icon: Icons.settings_rounded, label: 'Pengaturan'),
     ];
 

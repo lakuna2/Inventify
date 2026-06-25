@@ -21,29 +21,55 @@ class BottomNavigationKasir extends StatefulWidget {
 
 class _BottomNavigationKasirState extends State<BottomNavigationKasir> {
   int _selectedIndex = 0;
+  int _berandaKey = 0; // Key untuk force rebuild Beranda
+  int _profilKey = 0; // Key untuk force rebuild Profil
 
   List<Widget> get _pages => [
-    Beranda(onNavigate: (i) => setState(() => _selectedIndex = i)),
+    Beranda(
+      key: ValueKey(_berandaKey),
+      onNavigate: (i) => setState(() => _selectedIndex = i),
+    ),
     const Produk(),
     const Transaksi(),
     const Riwayat(),
-    const Profil(),
+    Profil(key: ValueKey(_profilKey)),
   ];
 
   @override
   Widget build(BuildContext context) {
+    // Keyboard terbuka jika viewInsets.bottom > 0
+    final bool keyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
+
     return Scaffold(
-      extendBody: true,
+      // Wajib true agar body naik saat keyboard muncul
+      resizeToAvoidBottomInset: true,
+      extendBody: !keyboardOpen, // Matikan extendBody saat keyboard terbuka
       body: IndexedStack(index: _selectedIndex, children: _pages),
-      floatingActionButton: _FloatingTransaksiButton(
-        isSelected: _selectedIndex == 2,
-        onTap: () => setState(() => _selectedIndex = 2),
-      ),
+
+      // Sembunyikan FAB saat keyboard terbuka
+      floatingActionButton: keyboardOpen
+          ? null
+          : _FloatingTransaksiButton(
+              isSelected: _selectedIndex == 2,
+              onTap: () => setState(() => _selectedIndex = 2),
+            ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: _CustomNavBar(
-        selectedIndex: _selectedIndex,
-        onTap: (index) => setState(() => _selectedIndex = index),
-      ),
+
+      // Sembunyikan navbar saat keyboard terbuka
+      bottomNavigationBar: keyboardOpen
+          ? null
+          : _CustomNavBar(
+              selectedIndex: _selectedIndex,
+              onTap: (index) {
+                setState(() {
+                  _selectedIndex = index;
+                  // Force rebuild Beranda saat tab Beranda dipilih
+                  if (index == 0) _berandaKey++;
+                  // Force rebuild Profil saat tab Profil dipilih
+                  if (index == 4) _profilKey++;
+                });
+              },
+            ),
     );
   }
 }
@@ -80,8 +106,6 @@ class _FloatingTransaksiButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              // ignore: duplicate_ignore
-              // ignore: deprecated_member_use
               color: AppColors.primary.withOpacity(isSelected ? 0.45 : 0.28),
               blurRadius: isSelected ? 18 : 10,
               offset: const Offset(0, 5),
@@ -167,7 +191,6 @@ class _CustomNavBar extends StatelessWidget {
         ),
 
         // ── Label "Transaksi" di bawah FAB ────────────────
-        // Posisi: bottom sedikit dari tepi bawah BottomAppBar
         Positioned(
           bottom: 6,
           child: GestureDetector(

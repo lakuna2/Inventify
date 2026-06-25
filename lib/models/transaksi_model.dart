@@ -72,3 +72,14 @@ class TransactionModel {
     );
   }
 }
+// Extension untuk konversi ke Map saat export laporan
+extension TransactionModelExport on TransactionModel {
+  Map<String, dynamic> toExportMap() => {
+    'id': id,                          // ← kode transaksi (doc.id Firestore)
+    'createdAt': createdAt,
+    'kasir': kasir,
+    'total': total,
+    'totalLaba': totalLaba,
+    'items': items.map((i) => i.toMap()).toList(),
+  };
+}

@@ -22,6 +22,7 @@ class _OwnerLaporanState extends State<OwnerLaporan>
   List<Map<String, dynamic>> _stokData = [];
 
   bool _loadMinggu = true, _loadBulan = true, _loadStok = true;
+  DateTime _selectedMonth = DateTime.now();
 
   @override
   void initState() {
@@ -48,9 +49,14 @@ class _OwnerLaporanState extends State<OwnerLaporan>
   Future<void> _fetchBulan() async {
     setState(() => _loadBulan = true);
     try {
-      final d = await _svc.getRingkasanBulan();
+      final d = await _svc.getRingkasanBulan(tanggal: _selectedMonth);
       if (mounted) setState(() { _bulanData = d; _loadBulan = false; });
     } catch (_) { if (mounted) setState(() => _loadBulan = false); }
+  }
+
+  void _changeMonth(DateTime newMonth) {
+    setState(() => _selectedMonth = newMonth);
+    _fetchBulan();
   }
 
   Future<void> _fetchStok() async {
@@ -85,7 +91,13 @@ class _OwnerLaporanState extends State<OwnerLaporan>
       ),
       body: TabBarView(controller: _tab, children: [
         LaporanMinggu(loading: _loadMinggu, data: _grafikData, onRefresh: _fetchMinggu),
-        LaporanBulan(loading: _loadBulan, data: _bulanData, onRefresh: _fetchBulan),
+        LaporanBulan(
+          loading: _loadBulan,
+          data: _bulanData,
+          onRefresh: _fetchBulan,
+          selectedMonth: _selectedMonth,
+          onMonthChange: _changeMonth,
+        ),
         LaporanStok(loading: _loadStok, data: _stokData, onRefresh: _fetchStok),
       ]),
     );

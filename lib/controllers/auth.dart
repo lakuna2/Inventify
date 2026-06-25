@@ -1,29 +1,52 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:inventify/services/encryption_helper.dart';
 
 class Auth {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  Future<void> regis(String nama, String email, String password, String role) async {
+  Future<void> regis(
+    String nama,
+    String email,
+    String password,
+    String role,
+    String namaToko,
+    String alamatToko,
+  ) async {
+    UserCredential? userCredential;
+
     try {
-      // 1. Buat akun baru di Firebase Auth
-      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+      // 1. Buat akun
+      userCredential = await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
         password: password,
       );
 
-      // 2. Simpan data user ke Firestore
+      // 2. Simpan ke Firestore DULU sebelum kirim verifikasi
       await FirebaseFirestore.instance
           .collection('users')
           .doc(userCredential.user!.uid)
           .set({
-        'nama': nama,
-        'email': email,
-        'role': role,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+            'nama': nama,
+            'email': email,
+            'password': EncryptionHelper.encrypt(password),
+            'role': role,
+            'namaToko': namaToko,
+            'alamatToko': alamatToko,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+
+      // 3. Baru kirim verifikasi email
+      await userCredential.user!.sendEmailVerification();
+
+      // 4. Sign out — user harus verifikasi dulu
+      await _auth.signOut();
     } catch (e) {
-      rethrow; // Biarkan error dilempar ke UI untuk ditangani
+      // ✅ Rollback — hapus akun Auth jika ada yang gagal
+      if (userCredential != null) {
+        await userCredential.user!.delete();
+      }
+      rethrow;
     }
   }
 
@@ -34,6 +57,13 @@ class Auth {
         email: email.trim(),
         password: password,
       );
+
+      // Cek email sudah diverifikasi
+      if (!userCredential.user!.emailVerified) {
+        await _auth.signOut();
+
+        throw FirebaseAuthException(code: 'email-not-verified');
+      }
 
       // 2. Ambil data user dari Firestore
       DocumentSnapshot userDoc = await FirebaseFirestore.instance
@@ -46,20 +76,24 @@ class Auth {
         throw Exception('Data pengguna tidak ditemukan di database.');
       }
 
-      // 4. Ambil role dengan aman
-      String role = (userDoc['role'] ?? '').toString().toLowerCase();
+      // 4. Auto-migrate password plain text → enkripsi
+      final data = userDoc.data() as Map<String, dynamic>;
+      final storedPass = data['password'] as String? ?? '';
 
-      // 5. Navigasi berdasarkan role
-      switch (role) {
-        case 'pemilik':
-          // Navigasi ke dashboard owner
-          break;
-        case 'kasir':
-          // Navigasi ke dashboard kasir
-          break;
-        default:
-          throw Exception('Role pengguna tidak dikenali.');
+      bool isEncrypted = true;
+      try {
+        EncryptionHelper.decrypt(storedPass);
+      } catch (_) {
+        isEncrypted = false;
       }
+
+      if (!isEncrypted) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userCredential.user!.uid)
+            .update({'password': EncryptionHelper.encrypt(password)});
+      }
+      
     } catch (e) {
       rethrow; // Biarkan error dilempar ke UI untuk ditangani
     }
