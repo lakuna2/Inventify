@@ -21,7 +21,7 @@ Dibangun dengan Flutter & Firebase Cloud Firestore
 > *"Perancangan Sistem Kasir Digital Berbasis Android Menggunakan Metode Object Oriented Analysis and Design"*
 > 
 > **Studi Kasus:** UD. Jasa Mandiri  
-> **Universitas Mulawarman — Program Studi Sistem Informasi**
+> **Universitas Mulawarman - Program Studi Sistem Informasi**
 
 ---
 
@@ -158,7 +158,7 @@ csv: ^8.0.0
 ## 📄 Lisensi
 
 Proyek ini dibuat untuk keperluan akademik.  
-© 2024 Aulia Ade Putri — Universitas Mulawarman
+© 2026 Aulia Ade Putri - Universitas Mulawarman
 
 ---
 
