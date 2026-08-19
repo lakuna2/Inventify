@@ -31,7 +31,7 @@ Dibangun dengan Flutter & Firebase Cloud Firestore
 |---|---|
 | 🏠 **Beranda** | Dashboard ringkasan penjualan hari ini, total laba, dan riwayat transaksi terbaru |
 | 🛍️ **Transaksi** | Proses penjualan dengan scan barcode dan perhitungan otomatis |
-| 📦 **Data Produk** | Kelola stok barang — tambah, edit, hapus, dan filter per kategori |
+| 📦 **Data Produk** | Kelola stok barang - tambah, edit, hapus, dan filter per kategori |
 | 📋 **Riwayat** | Histori seluruh transaksi dengan detail item dan laba |
 | 📊 **Laporan** | Rekap penjualan harian/bulanan dengan grafik |
 | 🖨️ **Cetak Struk** | Print struk via Bluetooth thermal printer |
